@@ -4,6 +4,7 @@
   import Search from './routes/Search.svelte';
   import Library from './routes/Library.svelte';
   import Settings from './routes/Settings.svelte';
+  import Media from './routes/Media.svelte';
 
   const links = [
     { href: '/', label: 'Home' },
@@ -35,6 +36,8 @@
       <Home />
     {:else if p.startsWith('/search')}
       <Search />
+    {:else if p.startsWith('/media/')}
+      <Media />
     {:else if p.startsWith('/library')}
       <Library />
     {:else if p.startsWith('/settings')}

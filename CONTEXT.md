@@ -13,9 +13,9 @@ All three share one reading model — page images, chapter-by-chapter — and di
 
 ## Catalog
 
-- **Catalog** — the metadata backbone: search, browse (latest/trending/top), covers, alt titles, chapter counts. Provided by the COMICK API. Distinct from content (Source) and from tracking (Tracker).
-- **Title** — a comic entry in the Catalog, identified by its COMICK `hid`. Carries cover, synopsis, tags, country/language, and chapter count.
-- **Chapter** — a unit of a Title in the Catalog, identified by its COMICK chapter `hid`, with a chapter number (`chap`) and volume. The canonical identity for reading progress — decoupled from which Source served the pages.
+- **Catalog** — the metadata backbone: search, browse (by country — JP/KR/CN → manga/manhwa/manhua, trending/popular), covers, alt titles, tags, status, chapter count. Provided by the AniList GraphQL API. Distinct from content (Source) and from tracking (Tracker). AniList is browser-CORS-callable, so the catalog is fetched directly from the web core on every platform — no proxy or Rust fetch needed for it. (COMICK and MangaDex were considered but are Cloudflare/bot-walled from a non-browser client — see ADR 0002.)
+- **Title** — a comic entry in the Catalog, identified by its AniList media `id`. Carries cover, synopsis, tags, country of origin, status, year, and chapter count.
+- **Chapter** — a unit of a Title. NOT provided by the Catalog (AniList carries no chapter list or contents); chapters come from a Source. A chapter is identified by its number as reported by the Source that served it.
 
 ## Sources (content)
 
@@ -30,9 +30,9 @@ All three share one reading model — page images, chapter-by-chapter — and di
 
 - **Built-in tracker** — the local source of truth for reading state: per-Title followed flag, per-Chapter read/unread, last-read chapter, reading history, last-read page. Persisted in IndexedDB.
 - **Tracker** — an external account (AniList, MAL, MangaUpdates) the built-in tracker syncs progress to. Distinct from Catalog and Source.
-- **Progress** — the last-read chapter for a Title, keyed on the COMICK chapter `hid`. On sync, mapped to the integer chapter number each Tracker expects.
+- **Progress** — the last-read chapter for a Title, keyed on the AniList media `id` plus the chapter number as reported by the Source that served it. On sync, mapped to the integer chapter number each Tracker expects (AniList/MAL manga progress is integral).
 - **Sync** — local-first: the built-in tracker pushes Progress to enabled Trackers on chapter transition; a manual "pull from tracker" imports existing Progress. No bidirectional auto-merge.
-- **Reader** — the page-image viewer. Renders manga (RTL paged), manhwa (vertical-webtoon scroll), and manhua (LTR paged) from one component. Direction is derived from the Catalog's country/language, with a per-reader override in every case.
+- **Reader** — the page-image viewer. Renders manga (RTL paged), manhwa (vertical-webtoon scroll), and manhua (LTR paged) from one component. Direction is derived from the Title's AniList country of origin (KR → vertical-webtoon, CN → LTR, JP → RTL, default RTL), with a per-reader override in every case.
 - **Library** — the user's followed Titles and reading history, backed by the built-in tracker.
 
 ## Provisioning & platforms

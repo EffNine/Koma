@@ -15,6 +15,7 @@ export interface Source {
   url: string; // base
   preset?: string; // CMS preset id
   enabled: boolean;
+  priority: number; // lower = higher priority, used for ordering
   config?: SourceConfig; // selector overrides
   addedAt: number;
   status?: 'ready' | 'needs-config' | 'unreachable';
@@ -46,7 +47,8 @@ let ensureInitialSourcesPromise: Promise<void> | null = null;
 
 export async function listSources(): Promise<Source[]> {
   await ensureInitialSources();
-  return db.sources.orderBy('addedAt').reverse().toArray();
+  const rows = await db.sources.orderBy('addedAt').reverse().toArray();
+  return rows.sort((a, b) => (a.priority ?? 0) - (b.priority ?? 0));
 }
 export async function getSource(id: string): Promise<Source | undefined> {
   await ensureInitialSources();
@@ -60,6 +62,9 @@ export async function toggleSource(id: string, enabled: boolean): Promise<void> 
 }
 export async function updateSource(id: string, patch: Partial<Source>): Promise<void> {
   await db.sources.update(id, patch);
+}
+export async function updateSourcePriority(id: string, priority: number): Promise<void> {
+  await db.sources.update(id, { priority });
 }
 
 export async function checkSourceUrl(rawUrl: string): Promise<SourceCheck> {
@@ -108,12 +113,14 @@ export async function checkSourceUrl(rawUrl: string): Promise<SourceCheck> {
 // Add a site by URL: fetch its home page, fingerprint the CMS, and save a visible status.
 export async function addByUrl(rawUrl: string): Promise<AddedSource> {
   const check = await checkSourceUrl(rawUrl);
+  const count = await db.sources.count();
   const source: Source = {
     id: new URL(check.base).host,
     name: friendlySourceName(check.base),
     url: check.base,
     preset: check.preset,
     enabled: true,
+    priority: count, // append at end
     addedAt: Date.now(),
     status: check.status,
     statusNote: check.statusNote,
@@ -126,6 +133,7 @@ export async function addByUrl(rawUrl: string): Promise<AddedSource> {
 export async function importSources(json: string): Promise<Source[]> {
   const arr = JSON.parse(json) as Partial<Source>[];
   const out: Source[] = [];
+  let idx = await db.sources.count();
   for (const s of arr) {
     if (!s?.url) continue;
     const base = normalizeBase(s.url);
@@ -135,6 +143,7 @@ export async function importSources(json: string): Promise<Source[]> {
       url: base,
       preset: s.preset,
       enabled: s.enabled ?? true,
+      priority: s.priority ?? idx++,
       config: s.config,
       addedAt: Date.now(),
       status: s.status ?? (s.preset ? 'ready' : 'needs-config'),
@@ -165,6 +174,10 @@ export async function recheckSource(id: string): Promise<Source | undefined> {
 export async function enabledSources(): Promise<Source[]> {
   await ensureInitialSources();
   return (await listSources()).filter((s) => s.enabled);
+}
+export async function nextPriority(): Promise<number> {
+  const all = await listSources();
+  return all.length > 0 ? Math.max(...all.map((s) => s.priority ?? 0)) + 1 : 0;
 }
 
 async function ensureInitialSources(): Promise<void> {

@@ -1,6 +1,7 @@
 import Dexie, { type Table } from 'dexie';
 import type { Source } from './scraper/sources';
 import type { ReaderState } from './reader/state';
+import type { ReaderSettings } from './reader/settings';
 import type { ChapterRead, HistoryEntry, ProgressEntry, TrackedTitle } from './tracker/local';
 import type { TrackerConnection } from './tracker/adapters/base';
 
@@ -14,6 +15,7 @@ class KomaDB extends Dexie {
   catalog!: Table<CacheEntry, string>;
   sources!: Table<Source, string>;
   readerState!: Table<ReaderState, string>;
+  readerSettings!: Table<ReaderSettings, string>;
   trackedTitles!: Table<TrackedTitle, number>;
   chapterReads!: Table<ChapterRead, string>;
   progress!: Table<ProgressEntry, string>;
@@ -46,6 +48,17 @@ class KomaDB extends Dexie {
       catalog: 'key, ts',
       sources: 'id, enabled, preset, addedAt, checkedAt, status',
       readerState: 'key, mediaId, sourceId, updatedAt',
+      trackedTitles: 'mediaId, followed, followedAt, updatedAt',
+      chapterReads: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, readAt',
+      progress: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, updatedAt, status',
+      history: 'id, mediaId, sourceId, readAt',
+      trackerConnections: 'id, enabled, updatedAt',
+    });
+    this.version(7).stores({
+      catalog: 'key, ts',
+      sources: 'id, enabled, preset, addedAt, checkedAt, status, priority',
+      readerState: 'key, mediaId, sourceId, updatedAt',
+      readerSettings: 'key',
       trackedTitles: 'mediaId, followed, followedAt, updatedAt',
       chapterReads: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, readAt',
       progress: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, updatedAt, status',

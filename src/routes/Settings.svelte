@@ -1,6 +1,6 @@
 <script lang="ts">
   import { onMount } from 'svelte';
-  import { listSources, addByUrl, removeSource, toggleSource, importSources, recheckSource } from '../lib/scraper/sources';
+  import { listSources, addByUrl, removeSource, toggleSource, importSources, recheckSource, updateSourcePriority } from '../lib/scraper/sources';
   import type { Source } from '../lib/scraper/sources';
   import {
     configureAniList,
@@ -15,6 +15,9 @@
   } from '../lib/tracker/sync';
   import type { TrackerAdapter, TrackerConnection } from '../lib/tracker/adapters';
   import { loadConnection } from '../lib/tracker/adapters';
+  import { loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../lib/reader/settings';
+  import type { ReaderDirection } from '../lib/reader/state';
+  import { clearCatalogCache } from '../lib/db';
 
   let sources = $state<Source[]>([]);
   let urlInput = $state('');
@@ -35,6 +38,12 @@
   let muUsername = $state('');
   let muPassword = $state('');
 
+  let readerSettings = $state<ReaderSettings>({ key: 'defaults', defaultDirection: 'rtl' });
+  let cacheSize = $state<number | null>(null);
+  let cacheMsg = $state('');
+
+  const directionLabel: Record<ReaderDirection, string> = { rtl: 'RTL', ltr: 'LTR', vertical: 'Vertical' };
+
   const statusLabel: Record<string, string> = {
     ready: 'Ready',
     'needs-config': 'Needs config',
@@ -52,9 +61,19 @@
     }
     trackerConns = conns;
   }
+  async function refreshReaderSettings() {
+    readerSettings = await loadReaderSettings();
+  }
+  async function refreshCacheSize() {
+    const { db } = await import('../lib/db');
+    const count = await db.catalog.count();
+    cacheSize = count;
+  }
   onMount(() => {
     refresh();
     refreshTrackers();
+    refreshReaderSettings();
+    refreshCacheSize();
   });
 
   function setMsg(tone: typeof msgTone, text: string) {
@@ -122,6 +141,24 @@
     }
   }
 
+  async function moveUp(s: Source) {
+    const idx = sources.indexOf(s);
+    if (idx <= 0) return;
+    const above = sources[idx - 1];
+    await updateSourcePriority(s.id, above.priority ?? 0);
+    await updateSourcePriority(above.id, s.priority ?? 0);
+    await refresh();
+  }
+
+  async function moveDown(s: Source) {
+    const idx = sources.indexOf(s);
+    if (idx < 0 || idx >= sources.length - 1) return;
+    const below = sources[idx + 1];
+    await updateSourcePriority(s.id, below.priority ?? 0);
+    await updateSourcePriority(below.id, s.priority ?? 0);
+    await refresh();
+  }
+
   async function toggleTracker(id: TrackerId, e: Event) {
     await setTrackerEnabled(id, (e.target as HTMLInputElement).checked);
     await refreshTrackers();
@@ -158,6 +195,18 @@
     }
   }
 
+  async function onReaderDirectionChange(e: Event) {
+    const dir = (e.target as HTMLSelectElement).value as ReaderDirection;
+    readerSettings = { ...readerSettings, defaultDirection: dir };
+    await saveReaderSettings(readerSettings);
+  }
+
+  async function onClearCache() {
+    await clearCatalogCache();
+    cacheMsg = 'Catalog cache cleared.';
+    await refreshCacheSize();
+  }
+
   let readyCount = $derived(sources.filter((s) => s.status === 'ready').length);
   let lastSavedSource = $derived(sources.find((s) => s.id === lastSavedId));
 
@@ -171,11 +220,11 @@
 </script>
 
 <h1 class="h1">Settings</h1>
-<p class="sub">Trackers &amp; Reader defaults arrive in later stages. Sources are live now, with auto-checking when you add a URL.</p>
+<p class="sub">Manage sources, trackers, reader defaults, and cache.</p>
 
 <div class="card sec">
   <h2>Sources</h2>
-  <p class="hint">Paste a site URL and Koma will auto-check it, detect a supported preset when possible, then save the source. Import still works for existing <code>sources.json</code> bundles.</p>
+  <p class="hint">Paste a site URL and Koma will auto-check it, detect a supported preset when possible, then save the source. Import still works for existing <code>sources.json</code> bundles. Drag the up/down arrows to reorder source priority.</p>
   <form class="row" onsubmit={add}>
     <input bind:value={urlInput} placeholder="https://manga-example.site" class="inp" />
     <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Add & Check'}</button>
@@ -197,8 +246,12 @@
   <div class="summary">{sources.length} saved source{sources.length === 1 ? '' : 's'} in this app • {readyCount} ready</div>
 
   <div class="slist">
-    {#each sources as s (s.id)}
+    {#each sources as s, i (s.id)}
       <div class:saved={s.id === lastSavedId} class="srow">
+        <div class="reorder">
+          <button class="reorder-btn" onclick={() => moveUp(s)} disabled={i === 0} title="Move up">▲</button>
+          <button class="reorder-btn" onclick={() => moveDown(s)} disabled={i >= sources.length - 1} title="Move down">▼</button>
+        </div>
         <label class="switch">
           <input type="checkbox" checked={s.enabled} onchange={(e) => toggle(s, e)} />
           <span class="slider"></span>
@@ -286,13 +339,38 @@
     {/each}
   </div>
 </div>
-<div class="card sec muted-card">
+
+<div class="card sec">
   <h2>Reader</h2>
-  <p class="hint">Defaults &amp; direction override — built in Stage 3.</p>
+  <p class="hint">Default reading direction for new chapters. Override per-chapter in the reader toolbar.</p>
+  <div class="reader-defaults">
+    <label class="sel-wrap">
+      <span>Default direction</span>
+      <select class="sel" value={readerSettings.defaultDirection} onchange={onReaderDirectionChange}>
+        {#each Object.entries(directionLabel) as [val, label] (val)}
+          <option value={val}>{label}</option>
+        {/each}
+      </select>
+    </label>
+  </div>
 </div>
-<div class="card sec muted-card">
+
+<div class="card sec">
   <h2>Cache</h2>
-  <p class="hint">Clear &amp; size — built in Stage 6.</p>
+  <p class="hint">Koma caches catalog data (search results, title details) to reduce API calls. Clear the cache to force a fresh fetch.</p>
+  <div class="cache-controls">
+    <div class="cache-info">
+      {#if cacheSize !== null}
+        <span>{cacheSize} cached entr{cacheSize === 1 ? 'y' : 'ies'}</span>
+      {:else}
+        <span>Loading cache info…</span>
+      {/if}
+    </div>
+    <button class="btn" onclick={onClearCache}>Clear Catalog Cache</button>
+  </div>
+  {#if cacheMsg}
+    <div class="msg ok">{cacheMsg}</div>
+  {/if}
 </div>
 
 <style>
@@ -325,8 +403,12 @@
   .state.unreachable { background: color-mix(in srgb, var(--danger) 14%, transparent); border-color: color-mix(in srgb, var(--danger) 34%, transparent); color: #f6a0a0; }
   .small { padding: 5px 10px; font-size: 13px; }
   .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-  .muted-card { opacity: .6; }
   .sactions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+
+  .reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
+  .reorder-btn { background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 10px; width: 24px; height: 20px; padding: 0; cursor: pointer; line-height: 1; }
+  .reorder-btn:hover:not([disabled]) { color: var(--text); border-color: var(--accent); }
+  .reorder-btn[disabled] { opacity: .3; cursor: not-allowed; }
 
   .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
   .switch input { opacity: 0; width: 0; height: 0; }
@@ -336,6 +418,14 @@
   .switch input:checked + .slider::before { transform: translateX(16px); }
   .tracker-config { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0 50px; }
   .tracker-config .inp { min-width: 180px; flex: 1; }
+
+  .reader-defaults { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
+  .sel-wrap { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
+  .sel { min-width: 180px; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
+
+  .cache-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
+  .cache-info { color: var(--muted); font-size: 13px; }
+
   @media (max-width: 700px) {
     .srow { align-items: flex-start; }
     .sactions { width: 100%; }

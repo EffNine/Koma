@@ -10,6 +10,7 @@
     saveReaderState,
     type ReaderDirection,
   } from '../lib/reader/state';
+  import { loadReaderSettings } from '../lib/reader/settings';
   import { match, go, route } from '../lib/router';
   import { getPages } from '../lib/scraper/scraper';
   import { getSource, type Source } from '../lib/scraper/sources';
@@ -145,12 +146,15 @@
       if (seq !== loadSeq) return;
       if (!urls.length) throw new Error('No page images were extracted for this chapter.');
 
-      const saved = await loadReaderState(nextMediaId, nextSourceId, nextChapterUrl);
+      const [saved, settings] = await Promise.all([
+        loadReaderState(nextMediaId, nextSourceId, nextChapterUrl),
+        loadReaderSettings(),
+      ]);
       if (seq !== loadSeq) return;
 
       pageUrls = urls;
       pageBlobs = Array(urls.length).fill('');
-      direction = saved?.direction ?? deriveDirection(nextTitle.country);
+      direction = saved?.direction ?? settings.defaultDirection ?? deriveDirection(nextTitle.country);
       page = clamp(saved?.page ?? 0, 0, urls.length - 1);
       loading = false;
 

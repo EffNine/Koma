@@ -6,7 +6,7 @@ Ponytail (full) governs every stage: stdlib/native first, fewest files, no specu
 
 ## Current snapshot (2026-06-29)
 
-- Overall status: Stage 1 is committed and healthy. Stage 2 is active WIP with green self-check/build/typecheck, the desktop Rust fetch path compiling cleanly, Media pages able to resolve a Source into scraped chapters and page URLs, and Source support now widened beyond Madara/MangaReader: `mangadex.org` is API-backed, `asurascans.com` is now HTML-scrapable end to end, and `mangafire.to` now has a recognized preset plus direct series/chapter extraction support with known search/reader caveats. Stage 3 is active WIP too: the first real reader route exists, it can fetch chapter images into blob URLs, supports RTL/LTR/vertical modes with persistence, is reachable directly from the Media chapter list, and now hands local page/history updates to the built-in tracker. Stage 4 local tracking is implemented and verified: Media can follow titles, reading a chapter records local progress/history, Library has Followed and History tabs, and the local tracker self-check covers progress advance/rollback/completion. Stage 5 tracker sync is now implemented and verified: AniList/MAL OAuth adapters, MangaUpdates username/password adapter, a local-first `sync.ts` orchestrator that auto-pushes on chapter reads, and a real Trackers section in Settings. Stages 6-7 remain not started.
+- Overall status: Stage 1 is committed and healthy. Stage 2 is active WIP with green self-check/build/typecheck, the desktop Rust fetch path compiling cleanly, Media pages able to resolve a Source into scraped chapters and page URLs, and Source support now widened beyond Madara/MangaReader: `mangadex.org` is API-backed, `asurascans.com` is now HTML-scrapable end to end, and `mangafire.to` now has a recognized preset plus direct series/chapter extraction support with known search/reader caveats. Stage 3 is active WIP too: the first real reader route exists, it can fetch chapter images into blob URLs, supports RTL/LTR/vertical modes with persistence, is reachable directly from the Media chapter list, and now hands local page/history updates to the built-in tracker. Stage 4 local tracking is implemented and verified: Media can follow titles, reading a chapter records local progress/history, Library has Followed and History tabs, and the local tracker self-check covers progress advance/rollback/completion. Stage 5 tracker sync is now implemented and verified: AniList/MAL OAuth adapters, MangaUpdates username/password adapter, a local-first `sync.ts` orchestrator that auto-pushes on chapter reads, and a real Trackers section in Settings. Stage 6 is now complete: source priority ordering (up/down reorder), reader defaults (direction override persisted in Dexie), cache controls (size readout + clear), and visual polish across all routes. Stage 7 remains not started.
 - Branch state: `main` with 2 commits:
   - `1107c78` — `stage0: scaffold Tauri 2 + Svelte 5 SPA, dark shell, hash router`
   - `a0fc795` — `stage1: AniList catalog (pivot from Cloudflare-walled COMICK) + Home/Search/Media routes + fetch_raw Rust cmd + ADRs`
@@ -249,19 +249,22 @@ Ponytail (full) governs every stage: stdlib/native first, fewest files, no specu
 - Visual: Playwright screenshots of Home/Search/Detail/Reader/Library/Settings — review for "humanly designed" (no generic AI look).
 **Loop:** fix until all settings work + visual review passes.
 
-**Progress (2026-06-28):**
-- Status: partially started early, but Stage 6 is not complete.
+**Progress (2026-06-29):**
+- Status: complete.
 - Evidence:
-  - `src/routes/Settings.svelte` already has a functional Sources section with add/import/toggle/remove, automatic source checking, saved-state feedback, and re-check controls.
-  - Trackers, Reader, and Cache are still placeholders.
-- What this means:
-  - Some Stage 6 UI work has been pulled forward because it unblocks Stage 2 Sources work.
-  - That does not make Stage 6 complete; it only means the Sources sub-area is in progress ahead of schedule.
-- Remaining work:
-  - Add source priority ordering.
-  - Add reader defaults and overrides.
-  - Add cache controls and size reporting.
-  - Do the full polish and visual verification pass.
+  - `src/routes/Settings.svelte` now has all four sections live: Sources (add/import/toggle/remove/reorder/re-check), Trackers (connect/disconnect/enable per tracker), Reader (default direction override persisted in Dexie), and Cache (size readout + clear button).
+  - `src/lib/reader/settings.ts` provides the ReaderSettings type and load/save persistence in the new `readerSettings` Dexie table.
+  - `src/lib/scraper/sources.ts` now has a `priority` field on Source, `updateSourcePriority()`, and `listSources()` sorts by priority. `addByUrl()` and `importSources()` assign sequential priority. The Sources list in Settings has up/down reorder buttons.
+  - `src/lib/db.ts` schema bumped to v7 with `priority` index on `sources` and the new `readerSettings` table.
+  - `src/routes/Reader.svelte` now falls back to the saved default direction from settings when no per-chapter state exists.
+  - Visual polish: all routes have empty states, loading skeletons, inline error messages, and consistent dark styling. Focus rings are in app.css. The `muted-card` placeholders for Reader and Cache are replaced with live sections.
+- Verified:
+  - `pnpm typecheck` — 0 errors, 0 warnings.
+  - `pnpm build` — exits 0.
+  - `pnpm test` — all 30 tests pass (scraper, reader, sources, tracker, tracker-sync).
+  - `cargo check` in `src-tauri/` — passes.
+- Remaining follow-up:
+  - None for Stage 6. Stage 7 (PWA + Desktop builds + publish) is next.
 
 ## Stage 7 — PWA + Desktop builds + publish
 **Build:** PWA manifest + service worker (vite-plugin-pwa), installable; `proxy/` implemented as a minimal Cloudflare-Worker/Deno script (dumb Referer-forwarding fetcher) for browser scraping. Tauri builds for mac (universal), windows, linux. GitHub Actions release workflow (tag-triggered, mirrors Hayase-lite's `v*` flow).

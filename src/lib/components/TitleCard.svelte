@@ -21,5 +21,5 @@
   .tcard:hover { border-color: var(--accent); transform: translateY(-2px); }
   .tcard img { width: 100%; aspect-ratio: 3/4; object-fit: cover; display: block; background: var(--surface); }
   .nocover { aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; padding: 10px; color: var(--muted); font-size: 13px; text-align: center; background: var(--elevated); }
-  .tname { padding: 9px 10px 11px; font-size: 13px; line-height: 1.35; overflow: hidden; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+  .tname { padding: 9px 10px 11px; font-size: 13px; line-height: 1.35; overflow: hidden; display: -webkit-box; line-clamp: 2; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
 </style>

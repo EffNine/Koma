@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { onMount } from 'svelte';
   import { search } from '../lib/catalog/anilist';
   import type { Title } from '../lib/catalog/types';
   import TitleCard from '../lib/components/TitleCard.svelte';
 
   let q = $state('');
+  let inputEl = $state<HTMLInputElement | null>(null);
   let titles = $state<Title[]>([]);
   let loading = $state(false);
   let err = $state('');
@@ -17,17 +19,19 @@
     catch (e) { err = String(e); titles = []; }
     finally { loading = false; done = true; }
   }
+
+  onMount(() => inputEl?.focus());
 </script>
 
 <form class="searchbar" onsubmit={(e) => { e.preventDefault(); run(); }}>
-  <input bind:value={q} placeholder="Search manga, manhwa, manhua…" autofocus />
+  <input bind:this={inputEl} bind:value={q} placeholder="Search manga, manhwa, manhua…" />
   <button class="btn btn-primary" type="submit">Search</button>
 </form>
 
 {#if err}
   <div class="card err">{err}</div>
 {:else if loading}
-  <div class="grid">{#each Array(8) as _, i (i)}<div class="card skel" />{/each}</div>
+  <div class="grid">{#each Array(8) as _, i (i)}<div class="card skel"></div>{/each}</div>
 {:else if done && titles.length === 0}
   <div class="card empty">No results for "{q}".</div>
 {:else}

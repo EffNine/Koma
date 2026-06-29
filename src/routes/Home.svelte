@@ -42,7 +42,7 @@
   <div class="card err">{err}. <button class="btn" onclick={load}>Retry</button></div>
 {:else if loading}
   <div class="grid">
-    {#each Array(12) as _, i (i)}<div class="card skel" />{/each}
+    {#each Array(12) as _, i (i)}<div class="card skel"></div>{/each}
   </div>
 {:else}
   <div class="grid">

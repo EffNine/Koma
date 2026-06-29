@@ -16,7 +16,22 @@ export interface Title {
 }
 
 export function titleName(t: Title): string {
-  return t.title.romaji || t.title.english || t.title.native || String(t.id);
+  return t.title.english || t.title.romaji || t.title.native || String(t.id);
+}
+
+export function titleAliases(t: Title): string[] {
+  const seen = new Set<string>();
+  const out: string[] = [];
+  for (const raw of [t.title.english, t.title.romaji, t.title.native]) {
+    const name = raw?.trim();
+    if (!name) continue;
+    const key = name.toLowerCase();
+    if (seen.has(key)) continue;
+    seen.add(key);
+    out.push(name);
+  }
+  if (out.length === 0) out.push(String(t.id));
+  return out;
 }
 
 export type Country = 'JP' | 'KR' | 'CN' | null;

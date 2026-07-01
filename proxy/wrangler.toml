@@ -1,0 +1,9 @@
+name = "koma-proxy"
+main = "worker.mjs"
+compatibility_date = "2025-01-01"
+
+[vars]
+ALLOWED_SITES = ""
+
+[env.production]
+vars = { ALLOWED_SITES = "" }

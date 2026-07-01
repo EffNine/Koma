@@ -1,3 +1,5 @@
+import { db } from '../db';
+
 export type ReaderDirection = 'rtl' | 'ltr' | 'vertical';
 
 export interface ReaderState {
@@ -25,14 +27,12 @@ export async function loadReaderState(
   sourceId: string,
   chapterUrl: string,
 ): Promise<ReaderState | undefined> {
-  const { db } = await import('../db');
   return db.readerState.get(readerKey(mediaId, sourceId, chapterUrl));
 }
 
 export async function saveReaderState(
   input: Omit<ReaderState, 'key' | 'updatedAt'>,
 ): Promise<ReaderState> {
-  const { db } = await import('../db');
   const state: ReaderState = {
     ...input,
     key: readerKey(input.mediaId, input.sourceId, input.chapterUrl),

@@ -17,7 +17,7 @@
   import { loadConnection } from '../lib/tracker/adapters';
   import { loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../lib/reader/settings';
   import type { ReaderDirection } from '../lib/reader/state';
-  import { clearCatalogCache } from '../lib/db';
+  import { clearCatalogCache, db } from '../lib/db';
 
   let sources = $state<Source[]>([]);
   let urlInput = $state('');
@@ -65,7 +65,6 @@
     readerSettings = await loadReaderSettings();
   }
   async function refreshCacheSize() {
-    const { db } = await import('../lib/db');
     const count = await db.catalog.count();
     cacheSize = count;
   }

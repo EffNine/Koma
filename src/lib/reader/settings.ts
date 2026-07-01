@@ -1,3 +1,4 @@
+import { db } from '../db';
 import type { ReaderDirection } from './state';
 
 export interface ReaderSettings {
@@ -8,12 +9,10 @@ export interface ReaderSettings {
 const SETTINGS_KEY = 'defaults';
 
 export async function loadReaderSettings(): Promise<ReaderSettings> {
-  const { db } = await import('../db');
   const s = await db.readerSettings.get(SETTINGS_KEY);
   return s ?? { key: SETTINGS_KEY, defaultDirection: 'rtl' };
 }
 
 export async function saveReaderSettings(settings: ReaderSettings): Promise<void> {
-  const { db } = await import('../db');
   await db.readerSettings.put(settings);
 }

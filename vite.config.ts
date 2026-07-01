@@ -1,5 +1,6 @@
 import { defineConfig, type Plugin, type ViteDevServer } from 'vite';
 import { svelte } from '@sveltejs/vite-plugin-svelte';
+import { VitePWA } from 'vite-plugin-pwa';
 
 const UA =
   'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15';
@@ -49,7 +50,17 @@ function devScrapeProxy(): Plugin {
 
 // ponytail: single app, no SSR. Tauri uses ../dist as frontendDist.
 export default defineConfig({
-  plugins: [svelte(), devScrapeProxy()],
+  plugins: [
+    svelte(),
+    VitePWA({
+      registerType: 'autoUpdate',
+      workbox: {
+        globPatterns: ['**/*.{js,css,html,ico,png,svg,webmanifest}'],
+      },
+      manifest: false,
+    }),
+    devScrapeProxy(),
+  ],
   clearScreen: false,
   server: { port: 5173, strictPort: true },
   build: { target: 'esnext' },

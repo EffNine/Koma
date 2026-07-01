@@ -1,0 +1,91 @@
+name: Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+permissions:
+  contents: write
+
+jobs:
+  web:
+    name: Web PWA
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm test
+      - run: pnpm typecheck
+      - run: pnpm build
+      - uses: actions/upload-artifact@v4
+        with:
+          name: koma-web
+          path: dist/
+          if-no-files-found: error
+
+  desktop:
+    name: Desktop ${{ matrix.os }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-latest, ubuntu-latest, windows-latest]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.5.2
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - name: Install Linux dependencies
+        if: runner.os == 'Linux'
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf
+      - uses: dtolnay/rust-toolchain@stable
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm tauri build
+        env:
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+      - uses: actions/upload-artifact@v4
+        with:
+          name: koma-desktop-${{ runner.os }}
+          path: src-tauri/target/release/bundle/
+          if-no-files-found: error
+
+  release:
+    name: Draft GitHub Release
+    needs: [web, desktop]
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/download-artifact@v4
+      - uses: softprops/action-gh-release@v2
+        with:
+          draft: true
+          prerelease: false
+          name: Koma ${{ github.ref_name }}
+          body: |
+            Web PWA and desktop artifacts for Koma.
+
+            macOS signing and notarization are optional; configure the Apple secrets in this workflow to produce signed builds.
+          files: |
+            koma-web/**
+            koma-desktop-macOS/**
+            koma-desktop-Linux/**
+            koma-desktop-Windows/**

@@ -11,8 +11,8 @@ http.createServer(async (req, res) => {
   const u = new URL(req.url, `http://localhost`);
   const target = u.searchParams.get('url');
   if (!target) {
-    res.writeHead(400, { 'Access-Control-Allow-Origin': '*' });
-    res.end('no url');
+    res.writeHead(400, { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' });
+    res.end(JSON.stringify({ error: 'no url' }));
     return;
   }
   const referer = u.searchParams.get('referer') || new URL(target).origin + '/';

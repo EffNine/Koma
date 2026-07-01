@@ -4,3 +4,6 @@ dist
 src-tauri/target
 src-tauri/gen
 *.log
+.claude/
+.playwright-mcp/
+e2e-session/

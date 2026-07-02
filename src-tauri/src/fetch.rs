@@ -19,7 +19,6 @@ pub async fn fetch_raw(
     url: String,
     referer: Option<String>,
     headers: Option<HashMap<String, String>>,
-    cf_cookies: Option<String>,
 ) -> Result<FetchResp, String> {
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(10))
@@ -50,13 +49,6 @@ pub async fn fetch_raw(
 
     // Set Referer: use provided value, else fall back to origin of the URL
     req = req.header("Referer", referer.unwrap_or(default_referer));
-
-    // Inject Cloudflare bypass cookies if available
-    if let Some(cookies) = cf_cookies {
-        if !cookies.is_empty() {
-            req = req.header("Cookie", cookies);
-        }
-    }
 
     // Merge caller-supplied headers on top (they win over defaults)
     if let Some(extra_headers) = headers {

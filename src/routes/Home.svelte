@@ -3,16 +3,7 @@
   import type { Country, Title } from '../lib/catalog/types';
   import { titleName } from '../lib/catalog/types';
   import TitleCard from '../lib/components/TitleCard.svelte';
-  import ProxiedImg from '../lib/components/ProxiedImg.svelte';
   import { go } from '../lib/router';
-  import {
-    fetchLatestUpdates,
-    fetchPopularOngoing,
-    fetchTrending,
-    fetchTopFollowNew,
-    fetchCompleted,
-    type ComickLatestItem,
-  } from '../lib/scraper/comickLatest';
   import { listHistory } from '../lib/tracker/local';
   import { db } from '../lib/db';
   import { media } from '../lib/catalog/anilist';
@@ -31,17 +22,7 @@
   let loading = $state(false);
   let err = $state('');
 
-  // ComicK-sourced sections
-  let latestUpdates = $state<ComickLatestItem[]>([]);
-  let latestLoading = $state(true);
-  let popularOngoing = $state<ComickLatestItem[]>([]);
-  let popularLoading = $state(true);
-  let trendingCk = $state<ComickLatestItem[]>([]);
-  let trendingCkLoading = $state(true);
-  let topNew = $state<ComickLatestItem[]>([]);
-  let topNewLoading = $state(true);
-
-  // AniList-sourced sections (fallback)
+  // AniList-sourced sections
   let trending = $state<Title[]>([]);
   let trendingLoading = $state(true);
   let popularNew = $state<Title[]>([]);
@@ -60,25 +41,7 @@
   }
   $effect(() => { tab; sort; load(); });
 
-  // Load ComicK-sourced sections in parallel
-  async function loadComickSections() {
-    const [updates, ongoing, trend, newFollow] = await Promise.all([
-      fetchLatestUpdates(),
-      fetchPopularOngoing(),
-      fetchTrending('7'),
-      fetchTopFollowNew('7'),
-    ]);
-    latestUpdates = updates;
-    latestLoading = false;
-    popularOngoing = ongoing;
-    popularLoading = false;
-    trendingCk = trend;
-    trendingCkLoading = false;
-    topNew = newFollow;
-    topNewLoading = false;
-  }
-
-  // Fallback AniList sections
+  // AniList sections
   async function loadTrending() {
     trendingLoading = true;
     try { trending = await browse(null, 'TRENDING_DESC', 1, 12); }
@@ -125,7 +88,7 @@
     }
   }
 
-  $effect(() => { loadComickSections(); loadTrending(); loadPopularNew(); loadContinueReading(); });
+  $effect(() => { loadTrending(); loadPopularNew(); loadContinueReading(); });
 
   // Derive the most recent unique title for continue reading
   let continueTitle = $derived.by(() => {
@@ -181,56 +144,15 @@
   </section>
 {/if}
 
-<!-- Latest Updates — ComicK-style -->
-<section class="section">
-  <div class="section-head">
-    <h2 class="h2">Latest Updates</h2>
-    <button class="btn small-btn" onclick={() => go('/search')}>View All</button>
-  </div>
-  {#if latestLoading}
-    <div class="grid">
-      {#each Array(6) as _, i (i)}<div class="card skel"></div>{/each}
-    </div>
-  {:else if latestUpdates.length > 0}
-    <div class="latest-strip">
-      {#each latestUpdates.slice(0, 12) as item (item.slug)}
-        <a class="latest-card" href={`#/search?q=${encodeURIComponent(item.title)}`}>
-          <ProxiedImg src={item.cover} alt={item.title} />
-          <div class="latest-info">
-            <span class="latest-title">{item.title}</span>
-            {#if item.lastChapter}
-              <span class="latest-ch">Ch. {item.lastChapter}</span>
-            {/if}
-          </div>
-        </a>
-      {/each}
-    </div>
-  {:else}
-    <!-- Fallback to AniList trending -->
-    <div class="grid">
-      {#each trending as t (t.id)}<TitleCard title={t} />{/each}
-    </div>
-  {/if}
-</section>
-
-<!-- Trending Now — ComicK-sourced -->
+<!-- Trending Now -->
 <section class="section">
   <div class="section-head">
     <h2 class="h2">Trending Now</h2>
     <button class="btn small-btn" onclick={() => go('/search')}>View All</button>
   </div>
-  {#if trendingCkLoading}
+  {#if trendingLoading}
     <div class="grid">
       {#each Array(6) as _, i (i)}<div class="card skel"></div>{/each}
-    </div>
-  {:else if trendingCk.length > 0}
-    <div class="grid">
-      {#each trendingCk.slice(0, 12) as item (item.slug)}
-        <a class="card tcard-ck" href={`#/search?q=${encodeURIComponent(item.title)}`}>
-          <ProxiedImg src={item.cover} alt={item.title} />
-          <div class="tname">{item.title}</div>
-        </a>
-      {/each}
     </div>
   {:else}
     <div class="grid">
@@ -239,55 +161,19 @@
   {/if}
 </section>
 
-<!-- Popular Ongoing — ComicK-style -->
+<!-- Popular -->
 <section class="section">
   <div class="section-head">
-    <h2 class="h2">Popular Ongoing</h2>
+    <h2 class="h2">Popular</h2>
     <button class="btn small-btn" onclick={() => go('/search')}>View All</button>
   </div>
-  {#if popularLoading}
+  {#if popularNewLoading}
     <div class="grid">
       {#each Array(6) as _, i (i)}<div class="card skel"></div>{/each}
-    </div>
-  {:else if popularOngoing.length > 0}
-    <div class="latest-strip">
-      {#each popularOngoing.slice(0, 12) as item (item.slug)}
-        <a class="latest-card" href={`#/search?q=${encodeURIComponent(item.title)}`}>
-          <ProxiedImg src={item.cover} alt={item.title} />
-          <div class="latest-info">
-            <span class="latest-title">{item.title}</span>
-            {#if item.lastChapter}
-              <span class="latest-ch">Ch. {item.lastChapter}</span>
-            {/if}
-          </div>
-        </a>
-      {/each}
     </div>
   {:else}
     <div class="grid">
       {#each popularNew as t (t.id)}<TitleCard title={t} />{/each}
-    </div>
-  {/if}
-</section>
-
-<!-- Top New Follows — ComicK-style -->
-<section class="section">
-  <div class="section-head">
-    <h2 class="h2">Top New</h2>
-    <button class="btn small-btn" onclick={() => go('/search')}>View All</button>
-  </div>
-  {#if topNewLoading}
-    <div class="grid">
-      {#each Array(6) as _, i (i)}<div class="card skel"></div>{/each}
-    </div>
-  {:else if topNew.length > 0}
-    <div class="grid">
-      {#each topNew.slice(0, 12) as item (item.slug)}
-        <a class="card tcard-ck" href={`#/search?q=${encodeURIComponent(item.title)}`}>
-          <ProxiedImg src={item.cover} alt={item.title} />
-          <div class="tname">{item.title}</div>
-        </a>
-      {/each}
     </div>
   {/if}
 </section>

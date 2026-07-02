@@ -11,7 +11,7 @@ export interface Preset {
   name: string;
   hosts?: string[];
   detect: RegExp;
-  driver?: 'html' | 'mangadex' | 'comick' | 'comick-api';
+  driver?: 'html' | 'mangadex';
   config?: PresetConfig;
 }
 
@@ -122,22 +122,6 @@ export const mangaFire: Preset = {
   },
 };
 
-export const comick: Preset = {
-  id: 'comick',
-  name: 'ComicK',
-  hosts: ['comickz.co.uk'],
-  detect: /ComicK|comickz\.co\.uk/i,
-  driver: 'comick',
-};
-
-export const comickApi: Preset = {
-  id: 'comick-api',
-  name: 'Comick Source API (50+ sources)',
-  hosts: ['comick-source-api.notaspider.dev'],
-  detect: /comick-source-api/i,
-  driver: 'comick-api',
-};
-
 // MangaStream — a common custom PHP theme used by many scanlation groups.
 // Similar structure to Madara but with different class names.
 export const mangaStream: Preset = {
@@ -215,34 +199,7 @@ export const wpManga: Preset = {
   },
 };
 
-// MangaPill — a custom manga reader site with static HTML (no JS rendering).
-// Search returns results in a CSS grid, chapters on the detail page, and
-// page images are in static <img> tags with data-src attributes.
-export const mangaPill: Preset = {
-  id: 'mangapill',
-  name: 'MangaPill',
-  hosts: ['mangapill.com'],
-  detect: /MangaPill|mangapill/i,
-  driver: 'html',
-  config: {
-    search: {
-      url: '/search?q={q}',
-      results: 'div.my-3.grid > div',
-      link: 'a[href^="/manga/"]',
-      title: 'a.mb-2',
-    },
-    chapters: {
-      list: '#chapters a[href^="/chapters/"]',
-      link: ':scope',
-    },
-    chapter: {
-      pages: 'img.js-page',
-      imgAttr: ['data-src', 'src'],
-    },
-  },
-};
-
-export const PRESETS: Preset[] = [madara, mangaReader, mangaDex, asura, mangaFire, mangaStream, genkan, wpManga, mangaPill, comick, comickApi];
+export const PRESETS: Preset[] = [madara, mangaReader, asura, mangaFire, mangaStream, genkan, wpManga];
 
 export function presetById(id?: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id);

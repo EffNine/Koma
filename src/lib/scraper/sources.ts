@@ -6,8 +6,6 @@ export interface SourceConfig {
   search?: { results?: string; link?: string; title?: string; url?: string };
   chapters?: { list?: string; link?: string };
   chapter?: { pages?: string; imgAttr?: string[] };
-  /** For the comick-api driver: which upstream source to query (e.g. 'mangaloom', 'weebcentral'). */
-  apiSourceId?: string;
 }
 
 export interface Source {
@@ -133,8 +131,6 @@ export function friendlySourceName(base: string): string {
   const host = new URL(base).host.replace(/^www\./, '');
   const known: Record<string, string> = {
     'comickz.co.uk': 'ComicK',
-    'mangapill.com': 'MangaPill',
-    'comick-source-api.notaspider.dev': 'Comick Source API (50+ sources)',
   };
   return known[host] ?? host;
 }

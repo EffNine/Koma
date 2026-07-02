@@ -52,10 +52,6 @@ async function addBuiltInSource(rawUrl: string): Promise<AddedSource> {
     status: check.status,
     statusNote: check.statusNote,
     checkedAt: check.checkedAt,
-    // The Comick Source API needs a default upstream source to query.
-    config: host === 'comick-source-api.notaspider.dev'
-      ? { apiSourceId: 'atsumoe' }
-      : undefined,
   };
   await db.sources.put(source);
   return { source, check };

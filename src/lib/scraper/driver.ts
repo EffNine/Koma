@@ -7,4 +7,4 @@ export interface ScraperDriver {
   getPages(source: Source, chapterUrl: string): Promise<string[]>;
 }
 
-export type DriverId = 'html' | 'mangadex' | 'comick' | 'comick-api';
+export type DriverId = 'html';

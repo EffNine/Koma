@@ -21,7 +21,6 @@
   } from '../lib/tracker/local';
   import { savePreferredGroup } from '../lib/media/titlePreferences';
   import { groupChapters, type ChapterGroup } from '../lib/media/chapterGroups';
-  import { groupUrl } from '../lib/scraper/groupMapping';
 
   let id = $derived(Number($route.path.split('/').filter(Boolean)[1]));
   let t = $state<Title | undefined>();
@@ -116,10 +115,6 @@
   async function loadGroupLinks(chapters: ScrapedChapter[]) {
     const uniqueGroups = new Set(chapters.map((c) => c.group).filter(Boolean));
     const links = new Map<string, string>();
-    for (const name of uniqueGroups) {
-      const url = await groupUrl(name!);
-      if (url) links.set(name!, url);
-    }
     groupLinks = links;
   }
 

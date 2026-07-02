@@ -18,7 +18,6 @@
   import { loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../lib/reader/settings';
   import type { ReaderDirection } from '../lib/reader/state';
   import { clearCatalogCache, db } from '../lib/db';
-  import { unlockCloudflare, listCfCookies, clearCfCookies, onCfUnlockProgress } from '../lib/net';
   import { exportBackup, importBackup, downloadBackup } from '../lib/backup/export';
   import { getTotalCacheSize, clearAllChapterCache } from '../lib/reader/chapterCache';
 
@@ -49,13 +48,6 @@
   let backupMsg = $state('');
   let backupMsgTone = $state<'info' | 'ok' | 'warn' | 'err'>('info');
   let importBusy = $state(false);
-
-  // Cloudflare unlock state
-  let cfUnlockUrl = $state('');
-  let cfUnlockMsg = $state('');
-  let cfUnlockTone = $state<'info' | 'ok' | 'warn' | 'err'>('info');
-  let cfUnlockBusy = $state(false);
-  let cfCookies = $state<Record<string, string>>({});
 
   const directionLabel: Record<ReaderDirection, string> = { rtl: 'RTL', ltr: 'LTR', vertical: 'Vertical' };
 
@@ -90,16 +82,6 @@
     refreshTrackers();
     refreshReaderSettings();
     refreshCacheSize();
-    refreshCfCookies();
-    // Listen for unlock progress
-    const unsub = onCfUnlockProgress((p) => {
-      cfUnlockMsg = p.message;
-      if (p.status === 'done') { cfUnlockTone = 'ok'; cfUnlockBusy = false; refreshCfCookies(); }
-      else if (p.status === 'error') { cfUnlockTone = 'err'; cfUnlockBusy = false; }
-      else if (p.status === 'captcha') { cfUnlockTone = 'warn'; }
-      else { cfUnlockTone = 'info'; }
-    });
-    return unsub;
   });
 
   function setMsg(tone: typeof msgTone, text: string) {
@@ -239,46 +221,6 @@
     await refreshCacheSize();
   }
 
-  // Cloudflare unlock
-  function refreshCfCookies() {
-    const hosts = listCfCookies();
-    const map: Record<string, string> = {};
-    for (const h of hosts) map[h] = 'stored';
-    cfCookies = map;
-  }
-
-  function setCfMsg(tone: typeof cfUnlockTone, text: string) {
-    cfUnlockTone = tone;
-    cfUnlockMsg = text;
-  }
-
-  async function onUnlockCloudflare(e?: Event) {
-    e?.preventDefault();
-    const u = cfUnlockUrl.trim();
-    if (!u) return;
-    cfUnlockBusy = true;
-    setCfMsg('info', `Unlocking ${u}...`);
-    try {
-      const result = await unlockCloudflare(u);
-      if (result.success) {
-        setCfMsg('ok', result.message);
-        refreshCfCookies();
-      } else {
-        setCfMsg('err', result.message);
-      }
-    } catch (e) {
-      setCfMsg('err', 'Failed: ' + String(e));
-    } finally {
-      cfUnlockBusy = false;
-    }
-  }
-
-  async function onClearCfCookies(host: string) {
-    clearCfCookies(host);
-    refreshCfCookies();
-    setCfMsg('ok', `Cleared cookies for ${host}.`);
-  }
-
   async function onExport() {
     try {
       const data = await exportBackup();
@@ -384,32 +326,6 @@
       <div class="empty">No sources saved yet. Add one above and the app will check it automatically.</div>
     {/each}
   </div>
-</div>
-
-<div class="card sec">
-  <h2>Cloudflare Unlock (Desktop only)</h2>
-  <p class="hint">Some manga sites are behind Cloudflare. On the desktop app, you can open a popup browser to pass the challenge and store cookies. Once unlocked, the app will use those cookies for all requests to that site.</p>
-  <form onsubmit={onUnlockCloudflare} class="row">
-    <input class="inp" type="url" placeholder="https://mangasite.example" bind:value={cfUnlockUrl} disabled={cfUnlockBusy} />
-    <button class="btn" type="submit" disabled={cfUnlockBusy || !cfUnlockUrl.trim()}>{cfUnlockBusy ? 'Unlocking…' : 'Unlock'}</button>
-  </form>
-  {#if cfUnlockMsg}
-    <div class:ok={cfUnlockTone === 'ok'} class:warn={cfUnlockTone === 'warn'} class:errbox={cfUnlockTone === 'err'} class="msg">{cfUnlockMsg}</div>
-  {/if}
-  {#if Object.keys(cfCookies).length > 0}
-    <div class="slist">
-      {#each Object.keys(cfCookies) as host (host)}
-        <div class="srow">
-          <div class="sinfo">
-            <div class="sname">{host} <span class="state ready">Unlocked</span></div>
-          </div>
-          <div class="sactions">
-            <button class="btn small" onclick={() => onClearCfCookies(host)}>Clear</button>
-          </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
 </div>
 
 <div class="card sec">

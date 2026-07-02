@@ -3,11 +3,7 @@ import { checkSourceUrl } from './sourceCheck';
 import type { AddedSource, Source } from './sources';
 import { friendlySourceName } from './sources';
 
-const BUILTIN_SOURCE_URLS = [
-  'https://comickz.co.uk/',
-  'https://mangapill.com/',
-  'https://comick-source-api.notaspider.dev/',
-];
+const BUILTIN_SOURCE_URLS: string[] = [];
 
 const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v3';
 let ensureInitialSourcesPromise: Promise<void> | null = null;
@@ -23,13 +19,7 @@ export async function ensureInitialSources(): Promise<void> {
       try { await db.sources.delete(id); } catch { /* ignore */ }
     }
 
-    // Ensure MangaPill is added for existing users who upgraded
-    const mangapillExists = await db.sources.get('mangapill.com');
-    if (!mangapillExists) {
-      await addBuiltInSource('https://mangapill.com/');
-    }
-
-    // Only seed if no ComicK source exists yet
+    // Only seed if no sources exist yet
     const existing = await db.sources.count();
     if (existing > 0) {
       window.localStorage.setItem(INITIAL_SOURCES_KEY, '1');

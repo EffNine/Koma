@@ -2,8 +2,11 @@ import Dexie, { type Table } from 'dexie';
 import type { Source } from './scraper/sources';
 import type { ReaderState } from './reader/state';
 import type { ReaderSettings } from './reader/settings';
+import type { TitlePreference } from './media/titlePreferences';
 import type { ChapterRead, HistoryEntry, ProgressEntry, TrackedTitle } from './tracker/local';
 import type { TrackerConnection } from './tracker/adapters/base';
+import type { TitleChapterSnapshot } from './media/chapterSnapshots';
+import type { ChapterCacheEntry, ChapterCachePage } from './reader/chapterCache';
 
 interface CacheEntry {
   key: string;
@@ -16,11 +19,15 @@ class KomaDB extends Dexie {
   sources!: Table<Source, string>;
   readerState!: Table<ReaderState, string>;
   readerSettings!: Table<ReaderSettings, string>;
+  titlePreferences!: Table<TitlePreference, number>;
   trackedTitles!: Table<TrackedTitle, number>;
   chapterReads!: Table<ChapterRead, string>;
   progress!: Table<ProgressEntry, string>;
   history!: Table<HistoryEntry, string>;
   trackerConnections!: Table<TrackerConnection, string>;
+  titleChapterSnapshots!: Table<TitleChapterSnapshot, string>;
+  chapterCache!: Table<ChapterCacheEntry, string>;
+  chapterCachePages!: Table<ChapterCachePage, string>;
   constructor() {
     super('koma');
     this.version(1).stores({ catalog: 'key, ts' });
@@ -65,16 +72,59 @@ class KomaDB extends Dexie {
       history: 'id, mediaId, sourceId, readAt',
       trackerConnections: 'id, enabled, updatedAt',
     });
+    this.version(8).stores({
+      catalog: 'key, ts',
+      sources: 'id, enabled, preset, addedAt, checkedAt, status, priority',
+      readerState: 'key, mediaId, sourceId, updatedAt',
+      readerSettings: 'key',
+      titlePreferences: 'mediaId, updatedAt',
+      trackedTitles: 'mediaId, followed, followedAt, updatedAt',
+      chapterReads: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, readAt',
+      progress: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, updatedAt, status',
+      history: 'id, mediaId, sourceId, readAt',
+      trackerConnections: 'id, enabled, updatedAt',
+    });
+    this.version(9).stores({
+      catalog: 'key, ts',
+      sources: 'id, enabled, preset, addedAt, checkedAt, status, priority',
+      readerState: 'key, mediaId, sourceId, updatedAt',
+      readerSettings: 'key',
+      titlePreferences: 'mediaId, updatedAt',
+      trackedTitles: 'mediaId, followed, followedAt, updatedAt',
+      chapterReads: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, readAt',
+      progress: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, updatedAt, status',
+      history: 'id, mediaId, sourceId, readAt',
+      trackerConnections: 'id, enabled, updatedAt',
+      titleChapterSnapshots: 'key, mediaId, checkedAt',
+    });
+    this.version(10).stores({
+      catalog: 'key, ts',
+      sources: 'id, enabled, preset, addedAt, checkedAt, status, priority',
+      readerState: 'key, mediaId, sourceId, updatedAt',
+      readerSettings: 'key',
+      titlePreferences: 'mediaId, updatedAt',
+      trackedTitles: 'mediaId, followed, followedAt, updatedAt',
+      chapterReads: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, readAt',
+      progress: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, updatedAt, status',
+      history: 'id, mediaId, sourceId, readAt',
+      trackerConnections: 'id, enabled, updatedAt',
+      titleChapterSnapshots: 'key, mediaId, checkedAt',
+      chapterCache: 'key, mediaId, sourceId, createdAt',
+      chapterCachePages: 'key, chapterKey, pageIndex',
+    });
   }
 }
 
 export const db = new KomaDB();
 
+const CATALOG_VERSION = 1;
+
 export async function cached<T>(key: string, ttlMs: number, fetcher: () => Promise<T>): Promise<T> {
-  const hit = await db.catalog.get(key);
+  const vKey = `${CATALOG_VERSION}:${key}`;
+  const hit = await db.catalog.get(vKey);
   if (hit && Date.now() - hit.ts < ttlMs) return hit.data as T;
   const data = await fetcher();
-  await db.catalog.put({ key, data, ts: Date.now() });
+  await db.catalog.put({ key: vKey, data, ts: Date.now() });
   return data;
 }
 

@@ -11,6 +11,7 @@ const OUT = '.playwright-mcp/e2e-session';
 const PORT = 5174;
 const BASE = `http://localhost:${PORT}`;
 
+fs.rmSync(OUT, { recursive: true, force: true });
 fs.mkdirSync(OUT, { recursive: true });
 
 function isPortOpen() {
@@ -120,9 +121,17 @@ try {
 
   await step('search', async () => {
     await goto('/#/search');
-    await page.fill('input[placeholder*="Search"]', 'One Piece');
-    await page.click('button[type="submit"]');
-    await page.waitForTimeout(2000);
+    await page.fill('.searchbar input[placeholder*="Search"]', 'One Piece');
+    await page.click('.searchbar button[type="submit"]');
+    await page.locator('.tcard, .empty, .err').first().waitFor({ timeout: 20000 });
+  });
+
+  await step('search-route-query', async () => {
+    await goto('/#/search?q=One%20Piece');
+    await page.locator('.searchbar input').waitFor({ timeout: 5000 });
+    await page.locator('.tcard, .empty, .err').first().waitFor({ timeout: 20000 });
+    const value = await page.locator('.searchbar input').inputValue();
+    if (value !== 'One Piece') throw new Error(`Search route query was not reflected in input, got "${value}"`);
   });
 
   await step('media', async () => {
@@ -157,7 +166,9 @@ if (server) {
 }
 
 // Report visible app-level failures even when console is clean.
-const mediaHtml = fs.readFileSync(`${OUT}/media-find-chapters.html`, 'utf8');
+const mediaHtml = fs.existsSync(`${OUT}/media-find-chapters.html`)
+  ? fs.readFileSync(`${OUT}/media-find-chapters.html`, 'utf8')
+  : '';
 const appIssues = [];
 const externalWarnings = [];
 if (mediaHtml.includes('No enabled sources yet')) appIssues.push('Media: no enabled sources');

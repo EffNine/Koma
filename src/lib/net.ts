@@ -14,15 +14,54 @@ export interface RawResp {
   final_url: string;
 }
 
+// Cloudflare cookie store — persists cookies keyed by hostname.
+// On desktop, cookies are stored in the Rust backend.
+// On web/PWA, we use localStorage (limited utility since proxy can't use them).
+const CF_COOKIES_KEY = 'koma.cf_cookies';
+
+function getCfCookiesSync(): Record<string, string> {
+  try {
+    return JSON.parse(localStorage.getItem(CF_COOKIES_KEY) || '{}');
+  } catch { return {}; }
+}
+
+function setCfCookiesSync(store: Record<string, string>) {
+  localStorage.setItem(CF_COOKIES_KEY, JSON.stringify(store));
+}
+
+export function getStoredCfCookies(host: string): string {
+  return getCfCookiesSync()[host] || '';
+}
+
+export function storeCfCookies(host: string, cookies: string) {
+  const store = getCfCookiesSync();
+  store[host] = cookies;
+  setCfCookiesSync(store);
+}
+
+export function clearCfCookies(host: string) {
+  const store = getCfCookiesSync();
+  delete store[host];
+  setCfCookiesSync(store);
+}
+
+export function listCfCookies(): string[] {
+  return Object.keys(getCfCookiesSync());
+}
+
 export async function fetchRaw(
   url: string,
   opts: { referer?: string; headers?: Record<string, string> } = {},
 ): Promise<RawResp> {
   if (isTauri) {
+    // Look up Cloudflare cookies for this host
+    const host = new URL(url).host;
+    const cfCookies = getStoredCfCookies(host) || null;
     return invoke<RawResp>('fetch_raw', {
       url,
       referer: opts.referer ?? null,
       headers: opts.headers ?? null,
+      cfCookies,
     });
   }
   const u = PROXY.startsWith('/')
@@ -47,6 +86,34 @@ export async function fetchRaw(
   const json = (await r.json()) as RawResp & { error?: string };
   if (json.status === 0 && json.error) throw new Error(json.error);
   return json;
+}
+
+/** Unlock a Cloudflare-walled site on desktop. Opens a webview to pass the challenge. */
+export async function unlockCloudflare(url: string): Promise<{ host: string; success: boolean; message: string }> {
+  if (!isTauri) {
+    throw new Error('Cloudflare unlock is only available on the desktop app.');
+  }
+  const result = await invoke<{ host: string; success: boolean; message: string }>('unlock_cloudflare', { url });
+  // Also store in localStorage for persistence
+  const host = new URL(url).host;
+  const cookies = await invoke<string>('get_cf_cookies', { host });
+  if (cookies) {
+    storeCfCookies(host, cookies);
+  }
+  return result;
+}
+
+/** Listen for Cloudflare unlock progress events. */
+export function onCfUnlockProgress(cb: (progress: { host: string; status: string; message: string }) => void): () => void {
+  if (!isTauri) return () => {};
+  let unlisten: (() => void) | undefined;
+  // Dynamic import to avoid bundling Tauri event API in web builds
+  import('@tauri-apps/api/event').then(({ listen }) => {
+    listen('cf-unlock-progress', (event: any) => {
+      cb(event.payload);
+    }).then((fn) => { unlisten = fn; });
+  });
+  return () => { unlisten?.(); };
 }
 
 function bytesOf(resp: RawResp): Uint8Array {

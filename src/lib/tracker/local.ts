@@ -1,6 +1,7 @@
 import type { Title } from '../catalog/types';
 import { titleName } from '../catalog/types';
 import { db } from '../db';
+import { chapterValue, computeProgress, computeRollback } from './progress';
 
 export type ProgressStatus = 'READING' | 'COMPLETED';
 
@@ -104,7 +105,8 @@ export async function isFollowed(mediaId: number): Promise<boolean> {
 }
 
 export async function listFollowedTitles(): Promise<TrackedTitle[]> {
-  const rows = await db.trackedTitles.where('followed').equals(1).toArray();
+  // IndexedDB does not allow boolean keys, so filter in memory instead of using the index.
+  const rows = await db.trackedTitles.filter((row) => row.followed).toArray();
   return rows.sort((a, b) => (b.followedAt ?? 0) - (a.followedAt ?? 0));
 }
 
@@ -115,6 +117,14 @@ export async function listHistory(limit = 80): Promise<HistoryEntry[]> {
 
 export async function getProgress(mediaId: number, sourceId: string): Promise<ProgressEntry | undefined> {
   return db.progress.get(progressKey(mediaId, sourceId));
+}
+
+export async function getReadChapters(mediaId: number, sourceId: string): Promise<Set<string>> {
+  const reads = await db.chapterReads
+    .where('[mediaId+sourceId]')
+    .equals([mediaId, sourceId])
+    .toArray();
+  return new Set(reads.map((r) => r.chapterNumber).filter((n): n is string => !!n));
 }
 
 export async function listProgress(): Promise<ProgressEntry[]> {
@@ -141,20 +151,23 @@ export async function recordChapterRead(input: ChapterProgressInput): Promise<Pr
   await db.chapterReads.put(read);
 
   const current = await getProgress(input.title.id, input.sourceId);
-  const shouldAdvance = !current || chapterNumberValue >= current.chapterNumberValue;
-  const progress: ProgressEntry = shouldAdvance
+  const computed = computeProgress(
+    current ? { chapterNumberValue: current.chapterNumberValue, status: current.status } : undefined,
+    { chapterNumber, chapterNumberValue, chapterUrl: input.chapterUrl, chapterTitle, totalChapters: input.title.chapters, readAt: now },
+  );
+  const progress: ProgressEntry = computed.chapterUrl
     ? {
         key: progressKey(input.title.id, input.sourceId),
         mediaId: input.title.id,
         sourceId: input.sourceId,
-        chapterUrl: input.chapterUrl,
-        chapterNumber,
-        chapterNumberValue,
-        chapterTitle,
-        status: progressStatus(chapterNumberValue, input.title.chapters),
+        chapterUrl: computed.chapterUrl,
+        chapterNumber: computed.chapterNumber,
+        chapterNumberValue: computed.chapterNumberValue,
+        chapterTitle: computed.chapterTitle,
+        status: computed.status,
         updatedAt: now,
       }
-    : { ...current, updatedAt: now };
+    : { ...current!, updatedAt: now };
   await db.progress.put(progress);
   await recordHistory({ ...input, chapterNumber, chapterTitle, readAt: now });
   if (chapterReadHook) {
@@ -183,11 +196,9 @@ export async function markChapterUnread(mediaId: number, sourceId: string, chapt
   const toDelete = scopedReads.filter((row) => row.chapterNumberValue >= cutoff).map((row) => row.key);
   await db.chapterReads.bulkDelete(toDelete);
 
-  const remaining = scopedReads
-    .filter((row) => row.chapterNumberValue < cutoff)
-    .sort((a, b) => b.chapterNumberValue - a.chapterNumberValue)[0];
+  const rollback = computeRollback(scopedReads, cutoff);
 
-  if (!remaining) {
+  if (!rollback) {
     await db.progress.delete(progressKey(mediaId, sourceId));
     return undefined;
   }
@@ -196,10 +207,10 @@ export async function markChapterUnread(mediaId: number, sourceId: string, chapt
     key: progressKey(mediaId, sourceId),
     mediaId,
     sourceId,
-    chapterUrl: remaining.chapterUrl,
-    chapterNumber: remaining.chapterNumber,
-    chapterNumberValue: remaining.chapterNumberValue,
-    chapterTitle: remaining.chapterTitle,
+    chapterUrl: rollback.chapterUrl,
+    chapterNumber: rollback.chapterNumber,
+    chapterNumberValue: rollback.chapterNumberValue,
+    chapterTitle: rollback.chapterTitle,
     status: 'READING',
     updatedAt: Date.now(),
   };
@@ -249,15 +260,4 @@ function snapshotTitle(
     followedAt: state.followedAt,
     updatedAt: state.updatedAt,
   };
-}
-
-function chapterValue(chapterNumber: string | null | undefined): number {
-  if (!chapterNumber) return -1;
-  const parsed = Number.parseFloat(chapterNumber);
-  return Number.isFinite(parsed) ? parsed : -1;
-}
-
-function progressStatus(chapterNumberValue: number, totalChapters: number | undefined): ProgressStatus {
-  if (totalChapters && chapterNumberValue > totalChapters) return 'COMPLETED';
-  return 'READING';
 }

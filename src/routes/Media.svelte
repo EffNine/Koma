@@ -1,127 +1,212 @@
 <script lang="ts">
   import { route, go } from '../lib/router';
-  import { media } from '../lib/catalog/anilist';
-  import { titleAliases, titleName } from '../lib/catalog/types';
+  import { titleName } from '../lib/catalog/types';
   import type { Title } from '../lib/catalog/types';
   import { stripHtml } from '../lib/util';
   import { enabledSources, type Source } from '../lib/scraper/sources';
-  import { findSeries, getChapters, getPages } from '../lib/scraper/scraper';
   import type { ScrapedChapter } from '../lib/scraper/engine';
+  import { compareChapterDesc } from '../lib/scraper/engine';
   import {
-    followTitle,
-    isFollowed,
+    followTitle as followDetail,
+    unfollowTitle as unfollowDetail,
+    loadTitleDetail,
+  } from '../lib/media/titleDetail';
+  import { getTitlePreference } from '../lib/media/titlePreferences';
+  import { resolveChapters } from '../lib/media/chapterResolver';
+  import {
     markChapterUnread,
     recordChapterRead,
-    unfollowTitle,
+    getProgress,
+    getReadChapters,
   } from '../lib/tracker/local';
+  import { savePreferredGroup } from '../lib/media/titlePreferences';
+  import { groupChapters, type ChapterGroup } from '../lib/media/chapterGroups';
+  import { groupUrl } from '../lib/scraper/groupMapping';
 
   let id = $derived(Number($route.path.split('/').filter(Boolean)[1]));
   let t = $state<Title | undefined>();
   let loading = $state(true);
   let err = $state('');
   let sources = $state<Source[]>([]);
-  let sourceId = $state('');
-  let sourceBusy = $state(false);
-  let sourceErr = $state('');
-  let sourceMsg = $state('');
-  let matchUrl = $state('');
-  let matchTitle = $state('');
-  let matchQuery = $state('');
+  let chapterSource = $state<Source | undefined>();
   let chapters = $state<ScrapedChapter[]>([]);
-  let pageBusyUrl = $state('');
-  let pageErr = $state('');
-  let pageUrls = $state<string[]>([]);
-  let pageTitle = $state('');
+  let matchUrl = $state('');
+  let chapterLoading = $state(false);
+  let chapterErr = $state('');
   let followed = $state(false);
   let followBusy = $state(false);
-  let trackerMsg = $state('');
+  let groupLinks = $state<Map<string, string>>(new Map());
+  let progress = $state<{ chapterNumber?: string } | undefined>();
+  let readChapters = $state<Set<string>>(new Set());
+  let preferredGroup = $state<string | undefined>(undefined);
 
-  function resetResolvedState() {
-    sourceErr = '';
-    sourceMsg = '';
-    matchUrl = '';
-    matchTitle = '';
-    matchQuery = '';
-    chapters = [];
-    pageBusyUrl = '';
-    pageErr = '';
-    pageUrls = [];
-    pageTitle = '';
-    trackerMsg = '';
-  }
-
+  // Load title detail
   $effect(() => {
     const cur = id;
     if (!cur) return;
     loading = true;
     err = '';
-    resetResolvedState();
-    media(cur).then(async (x) => {
-      t = x;
-      followed = x ? await isFollowed(x.id) : false;
-      loading = false;
-    })
+    chapters = [];
+    chapterSource = undefined;
+    matchUrl = '';
+    chapterErr = '';
+    loadTitleDetail(cur)
+      .then((detail) => {
+        t = detail?.title;
+        followed = detail?.followed ?? false;
+        loading = false;
+      })
       .catch((e) => { err = String(e); loading = false; });
   });
 
+  // Auto-resolve chapters once title + sources are ready
   $effect(() => {
-    enabledSources().then((rows) => {
-      sources = rows;
-      if (!rows.some((s) => s.id === sourceId)) sourceId = rows[0]?.id ?? '';
-    });
+    const title = t;
+    if (!title) return;
+    chapterLoading = true;
+    chapterErr = '';
+    autoResolve(title);
   });
 
-  $effect(() => {
-    sourceId;
-    resetResolvedState();
-  });
+  async function loadPreferredGroup() {
+    if (!t) return;
+    try {
+      const pref = await getTitlePreference(t.id);
+      preferredGroup = pref?.preferredGroup;
+    } catch {}
+  }
+
+  async function autoResolve(title: Title) {
+    const allSources = await enabledSources();
+    sources = allSources;
+    if (allSources.length === 0) {
+      chapterSource = undefined;
+      chapterLoading = false;
+      return;
+    }
+    // Try each enabled source in priority order until one returns chapters
+    for (const source of allSources) {
+      try {
+        const result = await resolveChapters(source, title);
+        if ('err' in result) continue;
+        if (result.chapters.length > 0) {
+          matchUrl = result.seriesUrl;
+          chapterSource = source;
+          chapters = result.chapters;
+          chapterLoading = false;
+          // Load progress for Start Reading button
+          loadProgress(source.id);
+          // Load read chapters for status indicators
+          loadReadChapters(source.id);
+          // Load preferred group for selection and grouping
+          loadPreferredGroup();
+          // Load group links in background
+          loadGroupLinks(result.chapters);
+          return;
+        }
+      } catch {
+        continue;
+      }
+    }
+    chapterLoading = false;
+    chapterSource = undefined;
+    chapterErr = 'No chapters found from any enabled source. Add or enable a source in Settings.';
+  }
+
+  async function loadGroupLinks(chapters: ScrapedChapter[]) {
+    const uniqueGroups = new Set(chapters.map((c) => c.group).filter(Boolean));
+    const links = new Map<string, string>();
+    for (const name of uniqueGroups) {
+      const url = await groupUrl(name!);
+      if (url) links.set(name!, url);
+    }
+    groupLinks = links;
+  }
+
+  async function loadProgress(sourceId: string) {
+    if (!t) return;
+    try {
+      const p = await getProgress(t.id, sourceId);
+      progress = p;
+    } catch {}
+  }
+
+  async function loadReadChapters(sourceId: string) {
+    if (!t) return;
+    try {
+      readChapters = await getReadChapters(t.id, sourceId);
+    } catch {}
+  }
 
   const countryLabel: Record<string, string> = { JP: 'Manga', KR: 'Manhwa', CN: 'Manhua' };
   let name = $derived(t ? titleName(t) : '');
   let desc = $derived(t?.description ? stripHtml(t.description) : '');
-  let selectedSource = $derived(sources.find((s) => s.id === sourceId));
-  let visibleChapters = $derived(chapters.slice(-80).reverse());
+  let chapterGroups = $derived(groupChapters(chapters, preferredGroup));
+  let chapterPage = $state(1);
+  let chapterPerPage = $state(60);
+  let gotoChapter = $state('');
+  let paginatedGroups = $derived(chapterGroups.slice(0, chapterPage * chapterPerPage));
+  let totalPages = $derived(Math.ceil(chapterGroups.length / chapterPerPage));
+  let currentPage = $derived(Math.min(chapterPage, totalPages));
 
-  async function resolveChapters() {
-    if (!t || !selectedSource) return;
-    sourceBusy = true;
-    resetResolvedState();
-
-    try {
-      for (const alias of titleAliases(t)) {
-        const series = await findSeries(selectedSource, alias);
-        if (!series) continue;
-        matchUrl = series.url;
-        matchTitle = series.title || alias;
-        matchQuery = alias;
-        chapters = await getChapters(selectedSource, series.url);
-        sourceMsg = chapters.length
-          ? `Matched "${matchTitle}" on ${selectedSource.name}.`
-          : `Matched "${matchTitle}" on ${selectedSource.name}, but no chapters were extracted.`;
-        return;
-      }
-      sourceErr = `No series match found on ${selectedSource.name}.`;
-    } catch (e) {
-      sourceErr = String(e);
-    } finally {
-      sourceBusy = false;
-    }
+  function relativeTime(iso: string | undefined): string {
+    if (!iso) return '';
+    const d = new Date(iso);
+    const now = new Date();
+    const diff = now.getTime() - d.getTime();
+    const mins = Math.floor(diff / 60000);
+    const hours = Math.floor(diff / 3600000);
+    const days = Math.floor(diff / 86400000);
+    if (mins < 1) return 'Just now';
+    if (mins < 60) return `${mins}m ago`;
+    if (hours < 24) return `${hours}h ago`;
+    if (days < 30) return `${days}d ago`;
+    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
+    return `${Math.floor(days / 365)}y ago`;
   }
 
-  async function inspectPages(chapter: ScrapedChapter) {
-    if (!selectedSource) return;
-    pageBusyUrl = chapter.url;
-    pageErr = '';
-    pageUrls = [];
-    pageTitle = chapter.title || `Chapter ${chapter.number ?? '?'}`;
-    try {
-      pageUrls = await getPages(selectedSource, chapter.url);
-      if (pageUrls.length === 0) pageErr = 'No page images were extracted from this chapter.';
-    } catch (e) {
-      pageErr = String(e);
-    } finally {
-      pageBusyUrl = '';
+  function scrollToChapter(num: string) {
+    const el = document.getElementById(`ch-${num}`);
+    if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }
+
+  function onGotoChapter() {
+    const num = gotoChapter.trim();
+    if (!num) return;
+    const idx = chapterGroups.findIndex((g) => g.number === num);
+    if (idx >= 0) {
+      chapterPage = Math.floor(idx / chapterPerPage) + 1;
+      requestAnimationFrame(() => scrollToChapter(num));
     }
+    gotoChapter = '';
+  }
+
+  async function startReading() {
+    if (!t || chapters.length === 0) return;
+    const source = chapterSource ?? sources.find((s) => s.enabled);
+    if (!source) return;
+
+    // If we have progress, resume from the last-read chapter
+    if (progress?.chapterNumber) {
+      const resume = chapterGroups.find((g) => g.number === progress!.chapterNumber);
+      if (resume) {
+        await readChapter(resume.preferred);
+        return;
+      }
+    }
+
+    // Otherwise start from the last chapter (lowest number = chapter 1).
+    const last = chapterGroups[chapterGroups.length - 1]?.preferred;
+    if (last) await readChapter(last);
+  }
+
+  async function startFromBeginning() {
+    if (!t || chapters.length === 0) return;
+    const source = chapterSource ?? sources.find((s) => s.enabled);
+    if (!source) return;
+    // Start from the last chapter in the list (lowest number = chapter 1).
+    const first = chapterGroups[chapterGroups.length - 1]?.preferred;
+    if (first) await readChapter(first);
   }
 
   async function toggleFollow() {
@@ -129,10 +214,10 @@
     followBusy = true;
     try {
       if (followed) {
-        await unfollowTitle(t.id);
+        await unfollowDetail(t.id);
         followed = false;
       } else {
-        await followTitle(t);
+        await followDetail(t);
         followed = true;
       }
     } finally {
@@ -140,24 +225,41 @@
     }
   }
 
+  function groupLabel(group: string | undefined, altCount: number, pref?: string): string {
+    if (!group) return `${altCount + 1} groups`;
+    const suffix = group === pref ? '' : ' (fallback)';
+    if (altCount === 0) return group + suffix;
+    return `${group} +${altCount}${suffix}`;
+  }
+
+  async function readAlt(group: ChapterGroup, selectedValue: string) {
+    const alt = group.alternatives.find((a) => (a.group ?? a.url) === selectedValue);
+    if (alt) await readChapter(alt);
+  }
+
   async function readChapter(chapter: ScrapedChapter) {
-    if (!selectedSource || !t) return;
+    if (!t) return;
+    const source = chapterSource ?? sources.find((s) => s.enabled);
+    if (!source) return;
+    if (chapter.group) {
+      await savePreferredGroup(t.id, chapter.group);
+    }
     await recordChapterRead({
       title: t,
-      sourceId: selectedSource.id,
+      sourceId: source.id,
       chapterUrl: chapter.url,
       chapterNumber: chapter.number,
       chapterTitle: chapter.title,
     });
-    go(`/reader/${t.id}/${selectedSource.id}/${encodeURIComponent(chapter.url)}`);
+    go(`/reader/${t.id}/${source.id}/${encodeURIComponent(matchUrl)}/${encodeURIComponent(chapter.url)}`);
   }
 
-  async function markUnread(chapter: ScrapedChapter) {
-    if (!selectedSource || !t || !chapter.number) return;
-    const progress = await markChapterUnread(t.id, selectedSource.id, chapter.number);
-    trackerMsg = progress?.chapterNumber
-      ? `Progress rolled back to chapter ${progress.chapterNumber}.`
-      : 'Progress cleared for this source.';
+  async function markUnreadNumber(chapterNumber: string | null) {
+    if (!t || !chapterNumber) return;
+    const source = chapterSource ?? sources.find((s) => s.enabled);
+    if (!source) return;
+    const progress = await markChapterUnread(t.id, source.id, chapterNumber);
+    // no feedback needed, tracker handles it silently
   }
 </script>
 
@@ -184,7 +286,14 @@
       {/if}
       <p class="desc">{desc}</p>
       <div class="actions">
-        <button class="btn" onclick={() => document.getElementById('source-panel')?.scrollIntoView({ behavior: 'smooth', block: 'start' })}>Find Chapters</button>
+        {#if chapters.length > 0}
+          {#if progress?.chapterNumber}
+            <button class="btn btn-primary" onclick={startReading}>Continue Reading</button>
+            <button class="btn" onclick={startFromBeginning}>Start Over</button>
+          {:else}
+            <button class="btn btn-primary" onclick={startReading}>Start Reading</button>
+          {/if}
+        {/if}
         <button class="btn" onclick={toggleFollow} disabled={followBusy}>
           {followBusy ? 'Saving…' : followed ? 'Following' : 'Follow'}
         </button>
@@ -193,109 +302,97 @@
     </div>
   </div>
 
-  <section class="card source-panel" id="source-panel">
-    <div class="source-head">
-      <div>
-        <h2>Sources</h2>
-        <p class="source-sub">Resolve this title against an enabled Source, then inspect the scraped chapter list and page images.</p>
-      </div>
-      <button class="btn" onclick={() => go('/settings')}>Manage Sources</button>
+  <!-- Chapters section — ComicK-style, no source picker -->
+  <section class="chapters-section">
+    <div class="chap-head">
+      <h2>Chapters</h2>
+      {#if chapters.length}
+        <div class="chap-meta">
+          <span>{chapters.length} chapter{chapters.length === 1 ? '' : 's'}</span>
+        </div>
+      {/if}
     </div>
 
-    {#if sources.length === 0}
-      <div class="empty-source">
-        No enabled sources yet. Add one in Settings first, then come back here to resolve chapters.
+    {#if chapterLoading}
+      <div class="card loading-chapters">Loading chapters…</div>
+    {:else if chapterErr}
+      <div class="card errbox">{chapterErr} <button class="btn small-btn" onclick={() => go('/settings')}>Manage Sources</button></div>
+    {:else if chapters.length === 0}
+      <div class="card empty-chapters">
+        No chapters found. Add a source in Settings to find chapters for this title.
+        <button class="btn small-btn" onclick={() => go('/settings')} style="margin-top:10px">Manage Sources</button>
       </div>
     {:else}
-      <div class="source-controls">
-        <label class="sel-wrap">
-          <span>Source</span>
-          <select bind:value={sourceId} class="sel">
-            {#each sources as s (s.id)}
-              <option value={s.id}>{s.name}{s.preset ? ` (${s.preset})` : ''}</option>
-            {/each}
-          </select>
-        </label>
-        <button class="btn btn-primary" onclick={resolveChapters} disabled={sourceBusy}>
-          {sourceBusy ? 'Resolving…' : 'Find Chapters'}
-        </button>
+      <!-- ComicK-style chapter table header -->
+      <div class="chap-table-header">
+        <span class="chap-col-chap">Chap</span>
+        <span class="chap-col-uploaded">Uploaded</span>
+        <span class="chap-col-group">Group</span>
+        <span class="chap-col-actions"></span>
       </div>
 
-      <div class="source-notes">
-        <span class="note">Trying aliases: {titleAliases(t).join(' / ')}</span>
-        {#if matchUrl}
-          <a class="note link" href={matchUrl} target="_blank" rel="noopener">Matched series ↗</a>
-        {/if}
-      </div>
-
-      {#if sourceMsg}
-        <div class="msg ok">{sourceMsg}</div>
-      {/if}
-      {#if sourceErr}
-        <div class="msg errbox">{sourceErr}</div>
-      {/if}
-      {#if trackerMsg}
-        <div class="msg ok">{trackerMsg}</div>
-      {/if}
-
-      {#if chapters.length}
-        <div class="chap-head">
-          <h3>Chapters</h3>
-          <div class="chap-meta">
-            {#if chapters.length > visibleChapters.length}
-              Showing newest {visibleChapters.length} of {chapters.length}
-            {:else}
-              {chapters.length} chapter{chapters.length === 1 ? '' : 's'}
-            {/if}
-            {#if matchQuery}
-              <span>matched via "{matchQuery}"</span>
-            {/if}
-          </div>
-        </div>
-
-        <div class="chapters">
-          {#each visibleChapters as c (c.url)}
-            <div class="chapter-row">
-              <div class="chapter-main">
-                <div class="chapter-title">{c.title || `Chapter ${c.number ?? '?'}`}</div>
-              <div class="chapter-meta">
-                {#if c.number}<span>Chapter {c.number}</span>{/if}
-                <a href={c.url} target="_blank" rel="noopener">Open source ↗</a>
-              </div>
-            </div>
-            <div class="chapter-actions">
-              <button class="btn small-btn btn-primary" onclick={() => readChapter(c)}>Read</button>
-              <button class="btn small-btn" onclick={() => inspectPages(c)} disabled={pageBusyUrl === c.url}>
-                {pageBusyUrl === c.url ? 'Loading…' : 'Inspect Pages'}
+      <div class="chapters">
+        {#each paginatedGroups as g (g.preferred.url)}
+          {@const c = g.preferred}
+          <div class="chapter-row" id={g.number ? `ch-${g.number}` : ''} class:read={g.number ? readChapters.has(g.number) : false}>
+            <div class="chap-col-chap">
+              <button class="chap-link" onclick={() => readChapter(c)}>
+                <span class="chap-num">Ch. {g.number ?? '?'}</span>
+                {#if g.number && readChapters.has(g.number)}
+                  <span class="chap-read-badge" title="Read">✓</span>
+                {/if}
               </button>
-              {#if c.number}
-                <button class="btn small-btn" onclick={() => markUnread(c)}>Mark Unread</button>
+            </div>
+            <div class="chap-col-uploaded">
+              <span class="chap-time">{relativeTime(c.createdAt)}</span>
+            </div>
+            <div class="chap-col-group">
+              {#if g.alternatives.length > 0}
+                <select class="chap-group-select" value={c.group ?? ''} onchange={(e) => readAlt(g, e.currentTarget.value)}>
+                  <option value={c.group ?? ''}>{groupLabel(c.group, g.alternatives.length, preferredGroup)}</option>
+                  {#each g.alternatives as alt (alt.url)}
+                    <option value={alt.group ?? alt.url}>{alt.group ?? alt.url}</option>
+                  {/each}
+                </select>
+              {:else if c.group}
+                {@const link = groupLinks.get(c.group)}
+                {#if link}
+                  <a class="chap-group-link" href={link} target="_blank" rel="noopener">{c.group}</a>
+                {:else}
+                  <span class="chap-group">{c.group}</span>
+                {/if}
               {/if}
             </div>
+            <div class="chap-col-actions">
+              <button class="btn small-btn btn-primary" onclick={() => readChapter(c)} title="Read">▶</button>
+              {#if g.number}
+                <button class="btn small-btn" onclick={() => markUnreadNumber(g.number)} title="Mark unread">↩</button>
+              {/if}
             </div>
-          {/each}
-        </div>
-      {/if}
-
-      {#if pageErr || pageUrls.length}
-        <div class="pages-panel">
-          <div class="pages-head">
-            <h3>{pageTitle || 'Pages'}</h3>
-            {#if pageUrls.length}<span>{pageUrls.length} image URL{pageUrls.length === 1 ? '' : 's'} extracted</span>{/if}
           </div>
-          {#if pageErr}
-            <div class="msg errbox">{pageErr}</div>
-          {/if}
-          {#if pageUrls.length}
-            <div class="page-list">
-              {#each pageUrls.slice(0, 6) as url, i (url)}
-                <a class="page-link" href={url} target="_blank" rel="noopener">Page {i + 1}: {url}</a>
-              {/each}
-            </div>
-            {#if pageUrls.length > 6}
-              <div class="page-more">Showing first 6 page URLs.</div>
+        {/each}
+      </div>
+
+      <!-- Pagination + Goto -->
+      {#if chapterGroups.length > chapterPerPage}
+        <div class="chap-footer">
+          <div class="chap-pages">
+            Showing chapters 1–{Math.min(chapterPage * chapterPerPage, chapterGroups.length)} of {chapterGroups.length}
+            — page {currentPage}/{totalPages}
+          </div>
+          <div class="chap-nav">
+            {#if chapterPage > 1}
+              <button class="btn small-btn" onclick={() => (chapterPage = chapterPage - 1)}>← Prev</button>
             {/if}
-          {/if}
+            {#if chapterPage < totalPages}
+              <button class="btn small-btn" onclick={() => (chapterPage = chapterPage + 1)}>Next →</button>
+            {/if}
+          </div>
+          <form class="chap-goto" onsubmit={(e) => { e.preventDefault(); onGotoChapter(); }}>
+            <span class="goto-label">Go to chap</span>
+            <input bind:value={gotoChapter} class="goto-input" placeholder="#" />
+            <button class="btn small-btn" type="submit">Go</button>
+          </form>
         </div>
       {/if}
     {/if}
@@ -315,39 +412,49 @@
   .actions { display: flex; gap: 8px; margin-top: 18px; }
   .btn[disabled] { opacity: .5; cursor: not-allowed; }
   .err { color: var(--danger); }
-  .source-panel { margin-top: 18px; }
-  .source-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 14px; flex-wrap: wrap; }
-  .source-head h2, .chap-head h3, .pages-head h3 { margin: 0; font-size: 16px; font-weight: 600; }
-  .source-sub, .chap-meta, .page-more { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
-  .source-controls { display: flex; gap: 10px; align-items: end; flex-wrap: wrap; margin-bottom: 10px; }
-  .sel-wrap { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; min-width: min(320px, 100%); }
-  .sel { min-width: min(320px, 100%); padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
-  .source-notes { display: flex; gap: 10px; flex-wrap: wrap; margin-bottom: 10px; }
-  .note { color: var(--muted); font-size: 12px; }
-  .note.link { color: var(--text); }
-  .msg { font-size: 13px; border-radius: var(--radius-sm); padding: 10px 12px; margin-top: 10px; }
-  .ok { background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); }
-  .errbox { color: var(--danger); background: color-mix(in srgb, var(--danger) 10%, transparent); border: 1px solid color-mix(in srgb, var(--danger) 32%, transparent); }
-  .empty-source { color: var(--muted); padding: 14px 0 4px; }
-  .chap-head { display: flex; justify-content: space-between; gap: 10px; align-items: end; margin-top: 16px; margin-bottom: 10px; flex-wrap: wrap; }
-  .chap-meta { display: flex; gap: 10px; flex-wrap: wrap; }
-  .chapters { display: flex; flex-direction: column; gap: 8px; max-height: 540px; overflow: auto; padding-right: 2px; }
-  .chapter-row { display: flex; gap: 10px; align-items: center; padding: 10px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--elevated); }
-  .chapter-main { flex: 1; min-width: 0; }
-  .chapter-title { font-size: 14px; font-weight: 550; }
-  .chapter-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px; margin-top: 4px; }
-  .chapter-actions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .small-btn { padding: 6px 10px; font-size: 13px; }
-  .pages-panel { margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border); }
-  .pages-head { display: flex; gap: 12px; justify-content: space-between; align-items: end; flex-wrap: wrap; margin-bottom: 10px; }
-  .pages-head span { color: var(--muted); font-size: 13px; }
-  .page-list { display: flex; flex-direction: column; gap: 8px; }
-  .page-link { color: var(--text); font-size: 13px; overflow-wrap: anywhere; }
-  .page-link:hover { color: #fff; }
+
+  /* Chapters section — ComicK-style */
+  .chapters-section { margin-top: 24px; }
+  .chap-head { display: flex; justify-content: space-between; gap: 10px; align-items: end; margin-bottom: 10px; flex-wrap: wrap; }
+  .chap-head h2 { margin: 0; font-size: 18px; font-weight: 650; }
+  .chap-meta { color: var(--muted); font-size: 13px; }
+  .chap-table-header { display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .chapters { display: flex; flex-direction: column; max-height: 540px; overflow: auto; padding-right: 2px; }
+  .chapter-row { display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; border-radius: var(--radius-sm); transition: background .1s; }
+  .chapter-row:hover { background: var(--elevated); }
+  .chapter-row.read { opacity: 0.6; }
+  .chapter-row.read .chap-num { color: var(--muted-2); }
+  .chap-read-badge { display: inline-flex; align-items: center; justify-content: center; margin-left: 6px; font-size: 11px; color: var(--accent); }
+  .chap-link { background: none; border: 0; color: var(--text); cursor: pointer; font-size: 14px; padding: 0; text-align: left; font-family: inherit; }
+  .chap-link:hover { color: var(--accent); }
+  .chap-num { font-weight: 500; }
+  .chap-time { font-size: 13px; color: var(--muted); }
+  .chap-group { font-size: 12px; color: var(--muted-2); }
+  .chap-group-link { font-size: 12px; color: var(--accent); text-decoration: none; }
+  .chap-group-link:hover { text-decoration: underline; }
+  .chap-group-select { font-size: 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; max-width: 160px; }
+  .chap-col-actions { display: flex; gap: 4px; }
+  .small-btn { padding: 4px 8px; font-size: 12px; min-width: 28px; text-align: center; }
+  .chap-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border); }
+  .chap-pages { font-size: 13px; color: var(--muted); }
+  .chap-nav { display: flex; gap: 6px; }
+  .chap-goto { display: flex; align-items: center; gap: 6px; }
+  .goto-label { font-size: 12px; color: var(--muted); }
+  .goto-input { width: 60px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; text-align: center; }
+  .loading-chapters { padding: 24px; text-align: center; color: var(--muted); }
+  .errbox { color: var(--danger); padding: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
+  .empty-chapters { padding: 24px; text-align: center; color: var(--muted); }
+
   @media (max-width: 800px) {
     .detail { flex-direction: column; }
     .cover { width: 150px; }
-    .chapter-row { align-items: flex-start; flex-direction: column; }
-    .chapter-actions { width: 100%; }
+    .chap-table-header { display: none; }
+    .chapter-row { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
+    .chap-col-chap { grid-column: 1; grid-row: 1; }
+    .chap-col-uploaded { grid-column: 1; grid-row: 2; }
+    .chap-col-group { display: none; }
+    .chap-col-actions { grid-column: 2; grid-row: 1 / span 2; align-self: center; }
+    .chap-footer { flex-direction: column; align-items: stretch; }
+    .chap-goto { justify-content: center; }
   }
 </style>

@@ -2,8 +2,11 @@
 // Pure — no network, no Tauri. DOMParser polyfilled from linkedom.
 import { DOMParser } from 'linkedom';
 import { readFileSync } from 'node:fs';
-import { extractSeriesLinks, extractChapters, extractPages, parseChapterNumber, matchSeries } from '../src/lib/scraper/engine.ts';
+import { compareChapterDesc, extractSeriesLinks, extractChapters, extractPages, parseChapterNumber, matchSeries } from '../src/lib/scraper/engine.ts';
 import type { Source } from '../src/lib/scraper/sources';
+import { extractChapterData } from '../src/lib/scraper/comickDriver';
+import { upstreamHtmlSource } from '../src/lib/scraper/comickApiDriver';
+import { presetById } from '../src/lib/scraper/presets';
 
 globalThis.DOMParser = DOMParser as unknown as typeof DOMParser;
 
@@ -57,6 +60,27 @@ const pages = extractPages(readFileSync('tests/fixtures/madara-chapter.html', 'u
 assert(pages.length === 3, '3 pages');
 assert(pages[0].endsWith('/1.jpg'), 'page0 uses data-src over placeholder src');
 assert(pages[2].endsWith('/3.jpg'), 'page2 falls back to src');
+
+const spacedAttrPages = extractPages(
+  '<div class="reading-content"><div class="page-break"><img data-src=" https://cdn.example/one-piece/4.jpg" /></div></div>',
+  madara,
+);
+assert(spacedAttrPages[0] === 'https://cdn.example/one-piece/4.jpg', 'page image attrs are trimmed before validation');
+assert(['1', '1186', '10'].toSorted(compareChapterDesc).join(',') === '1186,10,1', 'chapter display sort puts latest chapter first');
+
+const apiSource: Source = {
+  id: 'comick-source-api.notaspider.dev',
+  name: 'Comick Source API',
+  url: 'https://comick-source-api.notaspider.dev/',
+  preset: 'comick-api',
+  enabled: true,
+  addedAt: 0,
+};
+const upstreamMadaraHtml = '<body class="wp-theme-madara"><div class="reading-content"><img data-src=" https://mangaloom.example/c/1.jpg" /></div></body>';
+const upstreamSource = upstreamHtmlSource(apiSource, 'https://mangaloom.example/manga/one-piece/chapter-1/', upstreamMadaraHtml);
+assert(upstreamSource.url === 'https://mangaloom.example/', 'comick-api pages use the upstream origin as HTML source base');
+assert(upstreamSource.preset === 'madara', 'comick-api pages detect upstream HTML preset');
+assert(extractPages(upstreamMadaraHtml, upstreamSource).length === 1, 'comick-api upstream source extracts chapter images');
 
 assert(parseChapterNumber('Chapter 12.5') === '12.5', 'parse decimal chapter');
 assert(parseChapterNumber('Vol.2 Ch. 7') === '2', 'parse first number (ponytail: volume taken as first number)');
@@ -125,6 +149,59 @@ const mangaFireChapters = extractChapters(
 );
 assert(mangaFireChapters.length === 2, 'mangafire chapter selectors find chapter list');
 assert(mangaFireChapters[0].number === '1', 'mangafire chapters are sorted ascending');
+
+// ComicK preset
+const comickPreset = presetById('comick');
+assert(comickPreset?.id === 'comick', 'comick preset exists');
+assert(comickPreset?.driver === 'comick', 'comick preset uses comick driver');
+assert(comickPreset?.hosts?.includes('comickz.co.uk'), 'comick preset has comickz.co.uk host');
+
+// Comick API preset
+const comickApiPreset = presetById('comick-api');
+assert(comickApiPreset?.id === 'comick-api', 'comick-api preset exists');
+assert(comickApiPreset?.driver === 'comick-api', 'comick-api preset uses comick-api driver');
+assert(comickApiPreset?.hosts?.includes('comick-source-api.notaspider.dev'), 'comick-api preset has comick-source-api host');
+
+// ComicK search data extraction (from embedded JSON in SSR HTML)
+const comickSearchHtml = readFileSync('tests/fixtures/comick-search.html', 'utf8');
+// The comickDriver.findSeries uses fetchText, so we test the JSON extraction logic directly
+const comickSearchMatch = comickSearchHtml.match(/<script[^>]*>\s*(\{[\s\S]*?\})\s*<\/script>/);
+assert(comickSearchMatch !== null, 'comick search HTML has embedded JSON script tag');
+if (comickSearchMatch) {
+  const parsed = JSON.parse(comickSearchMatch[1]);
+  assert(parsed.data?.length === 2, 'comick search JSON has 2 results');
+  assert(parsed.data[0].slug === 'one-piece', 'comick first result is one-piece');
+  assert(parsed.data[0].title === 'One Piece', 'comick first result title is One Piece');
+}
+
+// ComicK chapter data extraction (simulated embedded JSON)
+const comickChapterJson = JSON.stringify({
+  chapter: {
+    id: 9919656,
+    chap: '345',
+    hid: 'NxUBepV',
+    lang: 'en',
+    title: '',
+    comic: { id: 55250, title: 'Blue Lock', slug: 'blue-lock' },
+    images: [
+      { url: 'https://cdn2.comicknew.pictures/blue-lock/0_345/en/64be7829/0.webp', h: 1378, w: 960, name: 'image 0' },
+      { url: 'https://cdn2.comicknew.pictures/blue-lock/0_345/en/64be7829/1.webp', h: 1378, w: 960, name: 'image 1' },
+    ],
+  },
+  chapterList: [{ hid: 'NxUBepV', chap: '345', lang: 'en' }],
+});
+const comickChapterHtml = `<html><body><script>${comickChapterJson}</script></body></html>`;
+const parsedChapter = extractChapterData(comickChapterHtml);
+assert(parsedChapter !== null, 'comick chapter HTML has embedded JSON');
+assert(parsedChapter?.chapter.images.length === 2, 'comick chapter has 2 images');
+assert(parsedChapter?.chapter.images[0].url.includes('cdn2.comicknew.pictures') ?? false, 'comick image URL is from CDN');
+assert(parsedChapter?.chapter.comic.slug === 'blue-lock', 'comick chapter comic slug is blue-lock');
+
+const comickChapterWithJsonLdFirst = `<html><body>
+  <script type="application/ld+json">{"@context":"https://schema.org","url":"https://comickz.co.uk/comic/blue-lock/NxUBepV-chapter-345-en"}</script>
+  <script id="sv-data" type="application/json">${comickChapterJson}</script>
+</body></html>`;
+assert(extractChapterData(comickChapterWithJsonLdFirst)?.chapter.images.length === 2, 'comick chapter parser skips JSON-LD before sv-data');
 
 if (failures) { console.error(`\n${failures} check(s) failed`); process.exit(1); }
 console.log('\nall scraper checks passed');

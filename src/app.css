@@ -1,21 +1,22 @@
-/* ponytail: one palette, one spacing scale, one accent. No framework, no CSS-in-JS. */
+/* ponytail: one palette, one spacing scale, one accent. Claude Code dark mode inspired. */
 :root {
-  --bg: #0c0d11;
-  --surface: #15171d;
-  --elevated: #1c1f27;
-  --border: #262a33;
+  --bg: #1a1a1a;
+  --surface: #222222;
+  --elevated: #2a2a2a;
+  --border: #333333;
   --text: #e8e8ec;
-  --muted: #8b8f9a;
-  --muted-2: #6b6f7a;
-  --accent: #8b7cf6;
-  --accent-press: #7669e8;
-  --danger: #ef6b6b;
+  --muted: #9ca3af;
+  --muted-2: #6b7280;
+  --accent: #D97706;
+  --accent-press: #B45309;
+  --accent-glow: rgba(217, 119, 6, 0.15);
+  --danger: #ef4444;
   --radius: 10px;
   --radius-sm: 7px;
   --gap: 16px;
   --gap-sm: 8px;
   --gap-lg: 28px;
-  --shadow: 0 6px 24px rgba(0, 0, 0, 0.35);
+  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
   --font: ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
@@ -50,15 +51,30 @@ button { font-family: inherit; }
   background: color-mix(in srgb, var(--bg) 80%, transparent);
   backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 10;
 }
-.brand { font-weight: 650; letter-spacing: 0.2px; font-size: 17px; display: flex; align-items: center; gap: 8px; }
-.brand .dot { width: 9px; height: 9px; border-radius: 3px; background: var(--accent); }
-.nav { display: flex; gap: 2px; flex: 1; }
+.brand { font-weight: 700; letter-spacing: -0.3px; font-size: 18px; display: flex; align-items: center; gap: 0; }
+.brand .logo-k {
+  display: inline;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: 18px;
+  color: var(--accent);
+  background: none;
+  width: auto;
+  height: auto;
+  border-radius: 0;
+  line-height: inherit;
+}
+.nav { display: flex; gap: 2px; }
 .nav a {
   padding: 7px 12px; border-radius: var(--radius-sm); color: var(--muted);
   font-size: 14px; font-weight: 500; cursor: pointer;
 }
 .nav a:hover { color: var(--text); background: var(--surface); }
 .nav a.active { color: var(--text); background: var(--elevated); }
+
+.top-search { margin-left: auto; }
+.top-search-input { width: 140px; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; transition: width .2s, border-color .2s; }
+.top-search-input:focus { width: 200px; border-color: var(--accent); outline: none; }
 
 .view { padding: var(--gap-lg) clamp(16px, 4vw, 48px); max-width: 1280px; margin: 0 auto; width: 100%; flex: 1; }
 .h1 { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
@@ -78,3 +94,22 @@ button { font-family: inherit; }
 .btn:hover { background: var(--elevated); }
 .btn-primary { background: var(--accent); border-color: transparent; color: #fff; }
 .btn-primary:hover { background: var(--accent-press); }
+
+@media (max-width: 760px) {
+  .topbar {
+    flex-wrap: wrap;
+    gap: 8px 12px;
+    padding: 10px 12px;
+  }
+  .brand { flex-shrink: 0; }
+  .top-search { margin-left: auto; }
+  .top-search-input { width: min(42vw, 170px); }
+  .top-search-input:focus { width: min(50vw, 200px); }
+  .nav {
+    order: 3;
+    width: 100%;
+    overflow-x: auto;
+    padding-bottom: 2px;
+  }
+  .nav a { flex: 0 0 auto; }
+}

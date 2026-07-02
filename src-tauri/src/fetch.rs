@@ -19,13 +19,14 @@ pub async fn fetch_raw(
     url: String,
     referer: Option<String>,
     headers: Option<HashMap<String, String>>,
+    cf_cookies: Option<String>,
 ) -> Result<FetchResp, String> {
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(10))
         .timeout(std::time::Duration::from_secs(30))
         .user_agent(
-            "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) \
-             AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Safari/605.1.15",
+            "Mozilla/5.0 (Windows NT 10.0; Win64; x64) \
+             AppleWebKit/537.36 (KHTML, like Gecko) Chrome/137.0.0.0 Safari/537.36",
         )
         .build()
         .map_err(|e| e.to_string())?;
@@ -36,10 +37,26 @@ pub async fn fetch_raw(
         .map(|u| format!("{}://{}", u.scheme(), u.host_str().unwrap_or("")))
         .unwrap_or_default();
 
-    let mut req = client.get(&url);
+    let mut req = client.get(&url)
+        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+        .header("Accept-Language", "en-US,en;q=0.9")
+        .header("Accept-Encoding", "gzip, deflate, br")
+        .header("DNT", "1")
+        .header("Upgrade-Insecure-Requests", "1")
+        .header("Sec-Fetch-Dest", "document")
+        .header("Sec-Fetch-Mode", "navigate")
+        .header("Sec-Fetch-Site", "none")
+        .header("Sec-Fetch-User", "?1");
 
     // Set Referer: use provided value, else fall back to origin of the URL
     req = req.header("Referer", referer.unwrap_or(default_referer));
+
+    // Inject Cloudflare bypass cookies if available
+    if let Some(cookies) = cf_cookies {
+        if !cookies.is_empty() {
+            req = req.header("Cookie", cookies);
+        }
+    }
 
     // Merge caller-supplied headers on top (they win over defaults)
     if let Some(extra_headers) = headers {

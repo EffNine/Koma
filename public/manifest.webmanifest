@@ -4,8 +4,8 @@
   "description": "Manga and comic reader with tracker sync",
   "start_url": "/",
   "display": "standalone",
-  "background_color": "#0f0f0f",
-  "theme_color": "#0f0f0f",
+  "background_color": "#1a1a1a",
+  "theme_color": "#D97706",
   "lang": "en",
   "scope": "/",
   "icons": [

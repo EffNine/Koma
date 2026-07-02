@@ -18,6 +18,9 @@
   import { loadReaderSettings, saveReaderSettings, type ReaderSettings } from '../lib/reader/settings';
   import type { ReaderDirection } from '../lib/reader/state';
   import { clearCatalogCache, db } from '../lib/db';
+  import { unlockCloudflare, listCfCookies, clearCfCookies, onCfUnlockProgress } from '../lib/net';
+  import { exportBackup, importBackup, downloadBackup } from '../lib/backup/export';
+  import { getTotalCacheSize, clearAllChapterCache } from '../lib/reader/chapterCache';
 
   let sources = $state<Source[]>([]);
   let urlInput = $state('');
@@ -38,9 +41,21 @@
   let muUsername = $state('');
   let muPassword = $state('');
 
-  let readerSettings = $state<ReaderSettings>({ key: 'defaults', defaultDirection: 'rtl' });
+  let readerSettings = $state<ReaderSettings>({ key: 'defaults', defaultDirection: 'rtl', imageFit: 'width' });
   let cacheSize = $state<number | null>(null);
   let cacheMsg = $state('');
+  let chapterCacheSize = $state<number | null>(null);
+  let chapterCacheMsg = $state('');
+  let backupMsg = $state('');
+  let backupMsgTone = $state<'info' | 'ok' | 'warn' | 'err'>('info');
+  let importBusy = $state(false);
+
+  // Cloudflare unlock state
+  let cfUnlockUrl = $state('');
+  let cfUnlockMsg = $state('');
+  let cfUnlockTone = $state<'info' | 'ok' | 'warn' | 'err'>('info');
+  let cfUnlockBusy = $state(false);
+  let cfCookies = $state<Record<string, string>>({});
 
   const directionLabel: Record<ReaderDirection, string> = { rtl: 'RTL', ltr: 'LTR', vertical: 'Vertical' };
 
@@ -67,12 +82,24 @@
   async function refreshCacheSize() {
     const count = await db.catalog.count();
     cacheSize = count;
+    const chSize = await getTotalCacheSize();
+    chapterCacheSize = chSize;
   }
   onMount(() => {
     refresh();
     refreshTrackers();
     refreshReaderSettings();
     refreshCacheSize();
+    refreshCfCookies();
+    // Listen for unlock progress
+    const unsub = onCfUnlockProgress((p) => {
+      cfUnlockMsg = p.message;
+      if (p.status === 'done') { cfUnlockTone = 'ok'; cfUnlockBusy = false; refreshCfCookies(); }
+      else if (p.status === 'error') { cfUnlockTone = 'err'; cfUnlockBusy = false; }
+      else if (p.status === 'captcha') { cfUnlockTone = 'warn'; }
+      else { cfUnlockTone = 'info'; }
+    });
+    return unsub;
   });
 
   function setMsg(tone: typeof msgTone, text: string) {
@@ -206,6 +233,88 @@
     await refreshCacheSize();
   }
 
+  async function onClearChapterCache() {
+    await clearAllChapterCache();
+    chapterCacheMsg = 'Chapter cache cleared.';
+    await refreshCacheSize();
+  }
+
+  // Cloudflare unlock
+  function refreshCfCookies() {
+    const hosts = listCfCookies();
+    const map: Record<string, string> = {};
+    for (const h of hosts) map[h] = 'stored';
+    cfCookies = map;
+  }
+
+  function setCfMsg(tone: typeof cfUnlockTone, text: string) {
+    cfUnlockTone = tone;
+    cfUnlockMsg = text;
+  }
+
+  async function onUnlockCloudflare(e?: Event) {
+    e?.preventDefault();
+    const u = cfUnlockUrl.trim();
+    if (!u) return;
+    cfUnlockBusy = true;
+    setCfMsg('info', `Unlocking ${u}...`);
+    try {
+      const result = await unlockCloudflare(u);
+      if (result.success) {
+        setCfMsg('ok', result.message);
+        refreshCfCookies();
+      } else {
+        setCfMsg('err', result.message);
+      }
+    } catch (e) {
+      setCfMsg('err', 'Failed: ' + String(e));
+    } finally {
+      cfUnlockBusy = false;
+    }
+  }
+
+  async function onClearCfCookies(host: string) {
+    clearCfCookies(host);
+    refreshCfCookies();
+    setCfMsg('ok', `Cleared cookies for ${host}.`);
+  }
+
+  async function onExport() {
+    try {
+      const data = await exportBackup();
+      downloadBackup(data);
+      setBackupMsg('ok', `Exported ${data.sources.length} sources, ${data.trackedTitles.length} tracked titles, ${data.chapterReads.length} chapter reads, and more.`);
+    } catch (e) {
+      setBackupMsg('err', 'Export failed: ' + String(e));
+    }
+  }
+
+  async function onImportBackup(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    importBusy = true;
+    setBackupMsg('info', 'Importing…');
+    try {
+      const text = await file.text();
+      const data = JSON.parse(text) as import('../lib/backup/export').BackupData;
+      const result = await importBackup(data);
+      setBackupMsg('ok', `Imported ${result.imported.join(', ') || 'nothing new'}. ${result.skipped.length} entries skipped (newer local data exists).`);
+      await refresh();
+      await refreshCacheSize();
+    } catch (e) {
+      setBackupMsg('err', 'Import failed: ' + String(e));
+    } finally {
+      importBusy = false;
+      input.value = '';
+    }
+  }
+
+  function setBackupMsg(tone: typeof backupMsgTone, text: string) {
+    backupMsgTone = tone;
+    backupMsg = text;
+  }
+
   let readyCount = $derived(sources.filter((s) => s.status === 'ready').length);
   let lastSavedSource = $derived(sources.find((s) => s.id === lastSavedId));
 
@@ -275,6 +384,32 @@
       <div class="empty">No sources saved yet. Add one above and the app will check it automatically.</div>
     {/each}
   </div>
+</div>
+
+<div class="card sec">
+  <h2>Cloudflare Unlock (Desktop only)</h2>
+  <p class="hint">Some manga sites are behind Cloudflare. On the desktop app, you can open a popup browser to pass the challenge and store cookies. Once unlocked, the app will use those cookies for all requests to that site.</p>
+  <form onsubmit={onUnlockCloudflare} class="row">
+    <input class="inp" type="url" placeholder="https://mangasite.example" bind:value={cfUnlockUrl} disabled={cfUnlockBusy} />
+    <button class="btn" type="submit" disabled={cfUnlockBusy || !cfUnlockUrl.trim()}>{cfUnlockBusy ? 'Unlocking…' : 'Unlock'}</button>
+  </form>
+  {#if cfUnlockMsg}
+    <div class:ok={cfUnlockTone === 'ok'} class:warn={cfUnlockTone === 'warn'} class:errbox={cfUnlockTone === 'err'} class="msg">{cfUnlockMsg}</div>
+  {/if}
+  {#if Object.keys(cfCookies).length > 0}
+    <div class="slist">
+      {#each Object.keys(cfCookies) as host (host)}
+        <div class="srow">
+          <div class="sinfo">
+            <div class="sname">{host} <span class="state ready">Unlocked</span></div>
+          </div>
+          <div class="sactions">
+            <button class="btn small" onclick={() => onClearCfCookies(host)}>Clear</button>
+          </div>
+        </div>
+      {/each}
+    </div>
+  {/if}
 </div>
 
 <div class="card sec">
@@ -356,19 +491,41 @@
 
 <div class="card sec">
   <h2>Cache</h2>
-  <p class="hint">Koma caches catalog data (search results, title details) to reduce API calls. Clear the cache to force a fresh fetch.</p>
+  <p class="hint">Koma caches catalog data (search results, title details) to reduce API calls, and chapter pages for offline reading. Clear caches to free up storage.</p>
   <div class="cache-controls">
     <div class="cache-info">
       {#if cacheSize !== null}
-        <span>{cacheSize} cached entr{cacheSize === 1 ? 'y' : 'ies'}</span>
+        <span>{cacheSize} catalog entr{cacheSize === 1 ? 'y' : 'ies'}</span>
       {:else}
-        <span>Loading cache info…</span>
+        <span>Loading catalog cache info…</span>
+      {/if}
+      {#if chapterCacheSize !== null}
+        <span>• {chapterCacheSize > 0 ? `${(chapterCacheSize / 1024 / 1024).toFixed(1)} MB` : '0 B'} chapter cache</span>
       {/if}
     </div>
     <button class="btn" onclick={onClearCache}>Clear Catalog Cache</button>
+    <button class="btn" onclick={onClearChapterCache}>Clear Chapter Cache</button>
   </div>
   {#if cacheMsg}
     <div class="msg ok">{cacheMsg}</div>
+  {/if}
+  {#if chapterCacheMsg}
+    <div class="msg ok">{chapterCacheMsg}</div>
+  {/if}
+</div>
+
+<div class="card sec">
+  <h2>Backup &amp; Restore</h2>
+  <p class="hint">Export your Koma data (sources, tracked titles, progress, reader settings) as a JSON file, or import a previous backup. Import merges by primary key and keeps the newest data where available.</p>
+  <div class="backup-controls">
+    <button class="btn" onclick={onExport}>Export Data</button>
+    <label class="btn" class:disabled={importBusy}>
+      {importBusy ? 'Importing…' : 'Import Data'}
+      <input type="file" accept="application/json" onchange={onImportBackup} hidden disabled={importBusy} />
+    </label>
+  </div>
+  {#if backupMsg}
+    <div class:ok={backupMsgTone === 'ok'} class:warn={backupMsgTone === 'warn'} class:errbox={backupMsgTone === 'err'} class="msg">{backupMsg}</div>
   {/if}
 </div>
 

@@ -4,22 +4,27 @@ Each stage is a vertical slice: implement -> verify -> commit. Verification is a
 
 Ponytail (full) governs every stage: stdlib/native first, fewest files, no speculative abstraction. Every non-trivial module leaves one runnable self-check.
 
-## Current snapshot (2026-06-29)
+## Current snapshot (2026-07-03)
 
-- Overall status: Stage 1 is committed and healthy. Stage 2 is active WIP with green self-check/build/typecheck, the desktop Rust fetch path compiling cleanly, Media pages able to resolve a Source into scraped chapters and page URLs, and Source support now widened beyond Madara/MangaReader: `mangadex.org` is API-backed, `asurascans.com` is now HTML-scrapable end to end, and `mangafire.to` now has a recognized preset plus direct series/chapter extraction support with known search/reader caveats. Stage 3 is active WIP too: the first real reader route exists, it can fetch chapter images into blob URLs, supports RTL/LTR/vertical modes with persistence, is reachable directly from the Media chapter list, and now hands local page/history updates to the built-in tracker. Stage 4 local tracking is implemented and verified: Media can follow titles, reading a chapter records local progress/history, Library has Followed and History tabs, and the local tracker self-check covers progress advance/rollback/completion. Stage 5 tracker sync is now implemented and verified: AniList/MAL OAuth adapters, MangaUpdates username/password adapter, a local-first `sync.ts` orchestrator that auto-pushes on chapter reads, and a real Trackers section in Settings. Stage 6 is now complete: source priority ordering (up/down reorder), reader defaults (direction override persisted in Dexie), cache controls (size readout + clear), and visual polish across all routes. Stage 7 remains not started.
-- Branch state: `main` with 2 commits:
+- Overall status: Stages 0–6 are complete. Stage 7 (PWA + Desktop builds + publish) is the only remaining stage. Multiple post-Stage-7 additions have been built.
+- **Recent additions (2026-07-02 → 2026-07-03):**
+  - **MangaPill** added as a third built-in source — fully static HTML manga reader site (no JS rendering). Uses the HTML driver with the `mangapill` preset. Search at `/search?q=...`, chapters in `#chapters` grid, page images in `<img class="js-page" data-src="...">` from `cdn.readdetectiveconan.com`. Verified: 50 search results, 1,202 chapters, 17 page images per chapter.
+  - **Comick Source API default** changed from `mangaloom` (broken chapters) to `atsumoe` (401 chapters working).
+  - **3 new CMS presets** added: `mangastream` (custom PHP theme), `genkan` (React-based CMS), `wpmanga` (WordPress manga theme). Total presets: 11.
+  - **Cloudflare bypass** (desktop only) — opens a native webview to pass Cloudflare JS challenges, extracts cookies (including httpOnly `cf_clearance`) via reqwest follow-up request, stores them in a global `CookieStore` for all subsequent `fetch_raw` calls. UI in Settings → Cloudflare Unlock. Implemented in `src-tauri/src/cloudflare.rs`.
+  - **Source health check** — `tests/source-health.ts` tests all presets against real sites via the dev proxy. 22 tests covering ComicK, Comick Source API, MangaPill, Madara sites, MangaStream, Genkan, and fingerprint detection.
+  - **Seed migration** — existing users get MangaPill added automatically on next launch (checks if `mangapill.com` exists, adds if missing).
+- **Built-in sources:** ComicK, MangaPill, Comick Source API (50+ sources via atsumoe). MangaDex, Asura Scans, and MangaFire were removed (Cloudflare walls).
+- **Branch state:** `main` with 2 commits:
   - `1107c78` — `stage0: scaffold Tauri 2 + Svelte 5 SPA, dark shell, hash router`
   - `a0fc795` — `stage1: AniList catalog (pivot from Cloudflare-walled COMICK) + Home/Search/Media routes + fetch_raw Rust cmd + ADRs`
-- Working tree state during this snapshot:
-  - Modified: `docs/STAGES.md`, `package.json`, `pnpm-lock.yaml`, `src-tauri/Cargo.toml`, `src-tauri/Cargo.lock`, `src-tauri/capabilities/default.json`, `src-tauri/src/lib.rs`, `src/App.svelte`, `src/lib/catalog/types.ts`, `src/lib/components/TitleCard.svelte`, `src/lib/db.ts`, `src/lib/net.ts`, `src/lib/scraper/presets.ts`, `src/lib/scraper/sources.ts`, `src/lib/tracker/local.ts`, `src/routes/Home.svelte`, `src/routes/Library.svelte`, `src/routes/Media.svelte`, `src/routes/Search.svelte`, `src/routes/Settings.svelte`
-  - Untracked WIP: `proxy/`, `src/lib/reader/`, `src/lib/scraper/`, `src/lib/tracker/adapters/`, `src/lib/tracker/oauth.ts`, `src/lib/tracker/sync.ts`, `src/routes/Reader.svelte`, `tests/`
-- Verification run for this snapshot:
+- **Verification:**
   - `pnpm build` — passed
-  - `pnpm typecheck` — passed with 0 warnings
-  - `pnpm test` — passed (`tests/scraper.test.ts`, `tests/reader.test.ts`, `tests/sources.test.ts`, `tests/tracker.test.ts`, `tests/tracker-sync.test.ts`)
+  - `pnpm typecheck` — 0 errors
+  - `pnpm test` — all 165+ tests pass
   - `cargo check` in `src-tauri/` — passed
-  - Browser smoke: `pnpm dev -- --host 127.0.0.1` then Playwright snapshot of `http://localhost:5173/#/library` — passed
-- Important architecture note: this document originally described a COMICK-backed Stage 1. That is no longer current. ADR 0002 accepted the pivot to AniList as the catalog backbone, and the stage notes below now reflect that decision.
+  - `cargo build` in `src-tauri/` — passed (full binary links)
+  - `tests/source-health.ts` — 22/22 passed
 
 ---
 
@@ -97,10 +102,12 @@ Ponytail (full) governs every stage: stdlib/native first, fewest files, no specu
     - selector-driven HTML scraping for theme/site presets
     - a MangaDex adapter that searches titles via the official API, fetches chapter feeds, and resolves image URLs through the at-home server endpoint
   - `src/lib/scraper/sources.ts` persists Sources in Dexie and supports add-by-URL, import, remove, toggle, source health checks, re-checking saved sources, hostname-based preset fallback for known sites, and friendly English source names for recognized hosts.
-  - On first run, `src/lib/scraper/sources.ts` now auto-seeds the three built-in supported sources into Dexie:
+  - On first run, `src/lib/scraper/sources.ts` now auto-seeds the built-in supported sources into Dexie:
     - `https://mangadex.org/`
     - `https://asurascans.com/`
     - `https://mangafire.to/`
+    - `https://comickz.co.uk/`
+    - `https://comick-source-api.notaspider.dev/`
     This removes the confusing "0 saved sources" empty state for a fresh app install while still allowing the user to remove them later without the app force-recreating them on every launch.
   - `src/lib/db.ts` now upgrades the `sources` table to include an `addedAt` index, fixing the regression where sources were saved successfully but the app could not list them back out because `listSources()` ordered by a non-indexed field.
   - `src/lib/scraper/engine.ts` now returns `null` when a title query does not genuinely match any scraped result, including non-empty native-script aliases that normalize down to an empty ASCII key. This avoids false-positive chapter matches like resolving an unrelated homepage card as if it were the requested series.
@@ -285,6 +292,154 @@ Ponytail (full) governs every stage: stdlib/native first, fewest files, no specu
   - Replace the dev proxy with the intended production worker story.
   - Add installable PWA support.
   - Verify `pnpm tauri build` outputs and release automation.
+
+---
+
+## Post-Stage 7 additions (2026-07-02)
+
+The following features were built after the original stage plan was completed. They are not part of any numbered stage but extend the app with ComicK-inspired UI and source integration.
+
+### ComicK source driver
+**Files:** `src/lib/scraper/comickDriver.ts`, `src/lib/scraper/presets.ts` (comick preset)
+- New `comick` driver that scrapes ComicK's SSR HTML pages and REST API.
+- **Search:** scrapes ComicK's `/search?q=...` page which embeds JSON with slug, title, ID, thumbnail, chapter count.
+- **Chapters:** fetches ComicK's REST API at `/api/comics/{slug}/chapter-list?lang=en` — returns structured JSON with `chap`, `hid`, `lang`, `group_name`, `created_at`.
+- **Pages:** extracts image URLs from embedded JSON on chapter pages (`chapter.images[].url`).
+- ComicK is auto-seeded as a built-in source alongside MangaDex, Asura Scans, and MangaFire.
+- `ScrapedChapter` now carries optional `group` and `createdAt` fields for richer display.
+
+### Comick Source API driver
+**Files:** `src/lib/scraper/comickApiDriver.ts`, `src/lib/scraper/presets.ts` (comick-api preset)
+- A unified REST API (https://comick-source-api.notaspider.dev) that proxies 50+ manga sources.
+- **Search:** `POST /api/search` — works with any upstream source (mangaloom, weebcentral, bato, etc.).
+- **Chapters:** `POST /api/chapters` — returns structured chapter data with numbers, titles, and URLs.
+- **Pages:** falls back to the HTML driver since the API is metadata-only.
+- Uses native `fetch` (CORS-friendly) — no proxy or Tauri command needed.
+- The `apiSourceId` config field lets users switch which upstream source to query.
+- Auto-seeded as a built-in source with default upstream `mangaloom`.
+- Open-source project by GooglyBlox (MIT): https://github.com/GooglyBlox/comick-source-api
+
+### ComicK-inspired chapter list UI
+**Files:** `src/routes/Media.svelte`
+- Redesigned the chapter list as a clean grid table matching ComicK's layout:
+  - **Chap** column — clickable chapter number, clicking reads the chapter
+  - **Uploaded** column — relative time ("30m ago", "2d ago", "1mo ago") from ComicK's `created_at` field
+  - **Group** column — scanlation group name (UTOON, Mangakakalot, etc.), clickable when mapped
+  - **Actions** column — compact ▶ Read, ↩ Mark Unread buttons
+- **Pagination** — "Showing chapters 1–60 of 214 — page 1/4" with Prev/Next buttons
+- **Go to chap** — type a chapter number and jump directly to it (scrolls into view)
+- **Read status badges** — already-read chapters show a ✓ badge and dimmed row
+- **Responsive** — on mobile, collapses to 2-column layout hiding the group column
+- Hover highlight on rows, no card borders (less clutter)
+
+### Auto-resolve chapters (no source picker)
+**Files:** `src/routes/Media.svelte`
+- Chapters load **automatically** on page load — no source dropdown, no "Find Chapters" button.
+- Tries each enabled source in priority order until one returns chapters.
+- Removed the entire source-panel UI (source selector, match info, inspect-pages, status messages).
+- Removed ~100 lines of state management for source selection.
+
+### Start Reading / Continue Reading button
+**Files:** `src/routes/Media.svelte`
+- **First visit** — shows "Start Reading" and opens the first chapter (lowest number).
+- **Returning reader** — shows "Continue Reading" and resumes from the last-read chapter via Dexie progress lookup.
+- Only appears after chapters are resolved, so it's never a dead link.
+
+### Scanlation group mapping
+**Files:** `src/lib/scraper/groupMapping.ts`
+- Community-maintained dataset (https://github.com/GooglyBlox/comick-group-mapping) mapping 761 scanlation group names to their actual websites.
+- Loaded on demand in the Media page to turn group names into clickable links.
+- 741 of 761 groups are mapped. Falls back to plain text for unmapped groups.
+- 5-second timeout on fetch to avoid hanging on slow GitHub responses.
+
+### Source cleanup (removed 3 old sources)
+**Files:** `src/lib/scraper/seed.ts`, `src/lib/scraper/sources.ts`
+- Removed MangaDex, Asura Scans, and MangaFire from built-in seed sources (Cloudflare walls, unreliable HTML scraping).
+- Only ComicK and Comick Source API remain as built-in sources.
+- Seed key bumped to `v2` so existing installs get the new source list.
+- Old source entries are cleaned up from Dexie on next load.
+
+### JSON parse error hardening
+**Files:** `src/lib/catalog/anilist.ts`, `src/lib/scraper/comickApiDriver.ts`, `src/lib/scraper/groupMapping.ts`
+- All `response.json()` calls now read as text first and validate the response starts with `{` or `[` before parsing.
+- Prevents `SyntaxError: Unexpected token '<'` errors when APIs return HTML (rate limits, error pages, redirects).
+- AniList error messages now include the response body snippet for debugging.
+
+### Reader fallback for missing sources
+**Files:** `src/routes/Reader.svelte`
+- If the saved source no longer exists (e.g. old reader links with `mangadex.org`), the reader auto-resolves chapters from any enabled source.
+- Matches by chapter number and updates the URL on the fly.
+- `seriesUrl`/`chapterUrl` are now mutable state instead of read-only derived values.
+
+### Categories route (original genre grid)
+**Files:** `src/routes/Categories.svelte`, `src/lib/catalog/anilist.ts` (browseByGenre, GENRE_COLLECTION)
+- Grid of 18 genre cards with emoji icons (Action ⚔️, Romance 💕, Fantasy 🧙, etc.)
+- Click a genre to browse titles sorted by Trending/Popular/Latest
+- Back button to return to genre grid
+- Uses AniList's `genre` GraphQL filter
+
+### Activity route
+**Files:** `src/routes/Activity.svelte`
+- Reading history timeline grouped by day
+- Relative timestamps ("Just now", "5m ago", "2h ago")
+- Each entry shows title name, chapter, page number, and link to open media page
+- Empty state with guidance when no history exists
+
+### Enhanced Home sections
+**Files:** `src/routes/Home.svelte`
+- **Trending Now** section — loads `TRENDING_DESC` from AniList
+- **Popular New Comics** section — loads `POPULARITY_DESC` from AniList
+- Original Browse section preserved below
+
+### ComicK Latest Updates feed (2026-07-02)
+**Files:** `src/lib/scraper/comickLatest.ts`, `src/routes/Home.svelte`
+- New `comickLatest.ts` module scrapes ComicK's home page SSR JSON (`#sv-data`) to extract:
+  - **Latest Updates** — recently added comics with chapter count (horizontal scroll strip)
+  - **Popular Ongoing** — currently popular series
+  - **Trending Now** — 7-day trending (ComicK-sourced)
+  - **Top New** — new series gaining follows
+- Home page now shows ComicK-sourced sections first, with AniList as fallback if ComicK is unreachable
+- Cards link to search so you can find and read them
+- ComicK-style horizontal scroll strips for Latest Updates and Popular Ongoing
+
+### Reader polish (2026-07-02)
+**Files:** `src/routes/Reader.svelte`
+- **Keyboard shortcuts:**
+  - `←`/`→` — page navigation (respects RTL direction)
+  - `↑`/`↓` / `Space` — scroll in vertical mode
+  - `F` — cycle image fit (width → screen → original)
+  - `D` — cycle direction (RTL → vertical → LTR)
+  - `G` — go to page prompt
+- **Click-to-advance** — tap left/right third of the page to go prev/next (paged mode)
+- **Next-chapter preloading** — fetches first 3 images of the next chapter to warm CDN caches
+- **Chapter-end nav for paged mode** — now shows prev/next chapter buttons at the bottom of paged readers too
+- **Shortcut hints** displayed in the toolbar
+
+### ComicK-style UI polish (2026-07-02)
+**Files:** `src/App.svelte`, `src/app.css`
+- **Top search bar** — quick search input in the nav bar (ComicK-style), navigates to search on submit
+- **Read status indicators** — chapter rows in Media show a ✓ badge and dimmed opacity for already-read chapters
+- **ComicK-style horizontal scroll strips** — Latest Updates and Popular Ongoing use a horizontal scrollable strip like ComicK's home page
+
+### ComicK-style filter page (2026-07-02)
+**Files:** `src/routes/Categories.svelte`, `src/lib/catalog/anilist.ts` (browseFiltered)
+- Replaced the simple genre grid with a full ComicK-style filter/browse page:
+- **Filter panel** (collapsible, with active filter badge count):
+  - **Origin** — All / Manga (JP) / Manhwa (KR) / Manhua (CN) — pill buttons
+  - **Sort** — Trending / Popular / Latest — pill buttons
+  - **Status** — All / Ongoing / Completed / Hiatus / Cancelled
+  - **Year range** — From / To number inputs
+  - **Min Chapters** — number input
+  - **Genres** — ComicK-style: click to include (highlighted purple), right-click to exclude (red strikethrough). Shows ✓ and ✕ marks
+  - **Apply Filters** button
+- **Results** — shows result count, grid of TitleCards, or empty state
+- **Backend** — new `browseFiltered()` function builds a dynamic AniList GraphQL query from filter state (genre include/exclude, country, status, year range, min chapters). Results cached in IndexedDB.
+
+### Verification
+- `pnpm typecheck` — 0 errors
+- `pnpm build` — passes
+- `pnpm test` — all 70+ tests pass (scraper, reader, sources, tracker, tracker-sync, progress, driver, pwa)
+- New tests: ComicK preset/driver seam checks, ComicK search JSON extraction, ComicK chapter JSON extraction, Comick API driver seam checks
 
 ---
 

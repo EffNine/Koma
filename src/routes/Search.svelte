@@ -3,6 +3,7 @@
   import { search } from '../lib/catalog/anilist';
   import type { Title } from '../lib/catalog/types';
   import TitleCard from '../lib/components/TitleCard.svelte';
+  import { route } from '../lib/router';
 
   let q = $state('');
   let inputEl = $state<HTMLInputElement | null>(null);
@@ -19,6 +20,23 @@
     catch (e) { err = String(e); titles = []; }
     finally { loading = false; done = true; }
   }
+
+  function routeQuery(): string {
+    const raw = location.hash.replace(/^#/, '');
+    const [, params = ''] = raw.split('?');
+    return new URLSearchParams(params).get('q')?.trim() ?? '';
+  }
+
+  let qFromRoute = $derived.by(() => {
+    $route;
+    return routeQuery();
+  });
+
+  $effect(() => {
+    if (!qFromRoute || qFromRoute === q.trim()) return;
+    q = qFromRoute;
+    void run();
+  });
 
   onMount(() => inputEl?.focus());
 </script>

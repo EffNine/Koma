@@ -1,15 +1,19 @@
 <script lang="ts">
-  import { route } from './lib/router';
+  import { route, go } from './lib/router';
   import Home from './routes/Home.svelte';
   import Search from './routes/Search.svelte';
   import Library from './routes/Library.svelte';
   import Settings from './routes/Settings.svelte';
   import Media from './routes/Media.svelte';
   import Reader from './routes/Reader.svelte';
+  import Categories from './routes/Categories.svelte';
+  import Activity from './routes/Activity.svelte';
 
   const links = [
     { href: '/', label: 'Home' },
     { href: '/search', label: 'Search' },
+    { href: '/categories', label: 'Categories' },
+    { href: '/activity', label: 'Activity' },
     { href: '/library', label: 'Library' },
     { href: '/settings', label: 'Settings' },
   ];
@@ -21,22 +25,42 @@
 
   // ponytail: route dispatch is an if-chain. Grows as routes are added (media/[id], reader/[id]).
   let p = $derived($route.path);
+
+  let searchQ = $state('');
+  function onSearchSubmit(e: Event) {
+    e.preventDefault();
+    if (searchQ.trim()) {
+      go(`/search?q=${encodeURIComponent(searchQ.trim())}`);
+      searchQ = '';
+    }
+  }
 </script>
 
 <div class="shell">
   <header class="topbar">
-    <a class="brand" href="#/"><span class="dot"></span>Koma</a>
+    <a class="brand" href="#/"><span class="logo-k">K</span>oma</a>
     <nav class="nav">
       {#each links as l (l.href)}
         <a class:active={active(l.href)} href={'#' + l.href}>{l.label}</a>
       {/each}
     </nav>
+    <form class="top-search" onsubmit={onSearchSubmit}>
+      <input
+        bind:value={searchQ}
+        placeholder="Search…"
+        class="top-search-input"
+      />
+    </form>
   </header>
   <main class="view">
     {#if p === '/'}
       <Home />
     {:else if p.startsWith('/search')}
       <Search />
+    {:else if p.startsWith('/categories')}
+      <Categories />
+    {:else if p.startsWith('/activity')}
+      <Activity />
     {:else if p.startsWith('/media/')}
       <Media />
     {:else if p.startsWith('/reader/')}

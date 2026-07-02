@@ -1,12 +1,13 @@
 import { db } from '../db';
-import { fetchText } from '../net';
-import { fingerprint } from './fingerprint';
-import { presetByHost, presetById } from './presets';
+import { checkSourceUrl, normalizeBase } from './sourceCheck';
+import { ensureInitialSources } from './seed';
 
 export interface SourceConfig {
   search?: { results?: string; link?: string; title?: string; url?: string };
   chapters?: { list?: string; link?: string };
   chapter?: { pages?: string; imgAttr?: string[] };
+  /** For the comick-api driver: which upstream source to query (e.g. 'mangaloom', 'weebcentral'). */
+  apiSourceId?: string;
 }
 
 export interface Source {
@@ -36,15 +37,6 @@ export interface AddedSource {
   check: SourceCheck;
 }
 
-const BUILTIN_SOURCE_URLS = [
-  'https://mangadex.org/',
-  'https://asurascans.com/',
-  'https://mangafire.to/home',
-];
-
-const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v1';
-let ensureInitialSourcesPromise: Promise<void> | null = null;
-
 export async function listSources(): Promise<Source[]> {
   await ensureInitialSources();
   const rows = await db.sources.orderBy('addedAt').reverse().toArray();
@@ -65,49 +57,6 @@ export async function updateSource(id: string, patch: Partial<Source>): Promise<
 }
 export async function updateSourcePriority(id: string, priority: number): Promise<void> {
   await db.sources.update(id, { priority });
-}
-
-export async function checkSourceUrl(rawUrl: string): Promise<SourceCheck> {
-  const base = normalizeBase(rawUrl);
-  const host = new URL(base).host.replace(/^www\./, '');
-  const knownPreset = presetByHost(host)?.id;
-  try {
-    const html = await fetchText(base, { referer: base });
-    const preset = fingerprint(html) || knownPreset;
-    if (preset) {
-      const presetName = presetById(preset)?.name ?? preset;
-      return {
-        base,
-        preset,
-        status: 'ready',
-        statusNote: `Detected ${presetName}. Source looks ready.`,
-        checkedAt: Date.now(),
-      };
-    }
-    return {
-      base,
-      status: 'needs-config',
-      statusNote: 'Saved, but no supported preset was detected yet.',
-      checkedAt: Date.now(),
-    };
-  } catch (e) {
-    if (knownPreset) {
-      const presetName = presetById(knownPreset)?.name ?? knownPreset;
-      return {
-        base,
-        preset: knownPreset,
-        status: 'ready',
-        statusNote: `Recognized ${presetName}. Live site check failed, but this source is supported.`,
-        checkedAt: Date.now(),
-      };
-    }
-    return {
-      base,
-      status: 'unreachable',
-      statusNote: `Saved, but the site could not be checked: ${String(e)}`,
-      checkedAt: Date.now(),
-    };
-  }
 }
 
 // Add a site by URL: fetch its home page, fingerprint the CMS, and save a visible status.
@@ -180,46 +129,12 @@ export async function nextPriority(): Promise<number> {
   return all.length > 0 ? Math.max(...all.map((s) => s.priority ?? 0)) + 1 : 0;
 }
 
-async function ensureInitialSources(): Promise<void> {
-  if (typeof window === 'undefined') return;
-  if (window.localStorage.getItem(INITIAL_SOURCES_KEY) === '1') return;
-  if (ensureInitialSourcesPromise) return ensureInitialSourcesPromise;
-  ensureInitialSourcesPromise = (async () => {
-    const existing = await db.sources.count();
-    if (existing > 0) {
-      window.localStorage.setItem(INITIAL_SOURCES_KEY, '1');
-      return;
-    }
-    for (const url of BUILTIN_SOURCE_URLS) {
-      await addByUrl(url);
-    }
-    window.localStorage.setItem(INITIAL_SOURCES_KEY, '1');
-  })();
-  try {
-    await ensureInitialSourcesPromise;
-  } finally {
-    ensureInitialSourcesPromise = null;
-  }
-}
-
-function normalizeBase(u: string): string {
-  let url = u.trim();
-  if (!/^https?:\/\//.test(url)) url = 'https://' + url;
-  // strip trailing path beyond the origin for a base
-  try {
-    const p = new URL(url);
-    return p.origin + '/';
-  } catch {
-    return url.replace(/\/+$/, '') + '/';
-  }
-}
-
-function friendlySourceName(base: string): string {
+export function friendlySourceName(base: string): string {
   const host = new URL(base).host.replace(/^www\./, '');
   const known: Record<string, string> = {
-    'mangadex.org': 'MangaDex',
-    'asurascans.com': 'Asura Scans',
-    'mangafire.to': 'MangaFire',
+    'comickz.co.uk': 'ComicK',
+    'mangapill.com': 'MangaPill',
+    'comick-source-api.notaspider.dev': 'Comick Source API (50+ sources)',
   };
   return known[host] ?? host;
 }

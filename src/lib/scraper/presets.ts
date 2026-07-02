@@ -11,7 +11,7 @@ export interface Preset {
   name: string;
   hosts?: string[];
   detect: RegExp;
-  driver?: 'html' | 'mangadex';
+  driver?: 'html' | 'mangadex' | 'comick' | 'comick-api';
   config?: PresetConfig;
 }
 
@@ -122,7 +122,127 @@ export const mangaFire: Preset = {
   },
 };
 
-export const PRESETS: Preset[] = [madara, mangaReader, mangaDex, asura, mangaFire];
+export const comick: Preset = {
+  id: 'comick',
+  name: 'ComicK',
+  hosts: ['comickz.co.uk'],
+  detect: /ComicK|comickz\.co\.uk/i,
+  driver: 'comick',
+};
+
+export const comickApi: Preset = {
+  id: 'comick-api',
+  name: 'Comick Source API (50+ sources)',
+  hosts: ['comick-source-api.notaspider.dev'],
+  detect: /comick-source-api/i,
+  driver: 'comick-api',
+};
+
+// MangaStream — a common custom PHP theme used by many scanlation groups.
+// Similar structure to Madara but with different class names.
+export const mangaStream: Preset = {
+  id: 'mangastream',
+  name: 'MangaStream (custom PHP theme)',
+  hosts: [],
+  detect: /mangastream|MangaStream|class="[^"]*chapter-content[^"]*"|id="readerarea"/i,
+  driver: 'html',
+  config: {
+    search: {
+      url: '/?s={q}',
+      results: '.listupd .bs, .listupd .bsx, .listupd article',
+      link: 'a[href*="manga/"], a[href*="series/"], a[href*="comic/"]',
+      title: '.tt, h4, .bs .tt',
+    },
+    chapters: {
+      list: '#chapterlist li, .clstyle li, .eplister li, ul.chapter-list li',
+      link: 'a',
+    },
+    chapter: {
+      pages: '#readerarea img, .chapter-content img, .read-content img, #images img',
+      imgAttr: ['data-src', 'data-lazy-src', 'src'],
+    },
+  },
+};
+
+// Genkan — a modern React-based CMS used by many scanlation groups (Reaper Scans, etc.).
+// SSR-rendered, so the HTML is available.
+export const genkan: Preset = {
+  id: 'genkan',
+  name: 'Genkan (React-based CMS)',
+  hosts: [],
+  detect: /genkan|__NEXT_DATA__|chakra-ui|@chakra/gi,
+  driver: 'html',
+  config: {
+    search: {
+      url: '/search?q={q}',
+      results: 'a[href*="/series/"], a[href*="/manga/"]',
+      link: ':scope',
+      title: 'h3, h4, .title, [class*="title"]',
+    },
+    chapters: {
+      list: 'a[href*="/chapter/"], a[href*="/read/"]',
+      link: ':scope',
+    },
+    chapter: {
+      pages: 'img[alt*="Page"], .chapter-images img, [class*="page"] img',
+      imgAttr: ['src', 'data-src'],
+    },
+  },
+};
+
+// WP Manga — another common WordPress manga theme, similar to Madara.
+export const wpManga: Preset = {
+  id: 'wpmanga',
+  name: 'WP Manga (WordPress theme)',
+  hosts: [],
+  detect: /wp-manga|manga\s*reading\s*theme|mangabooth/i,
+  driver: 'html',
+  config: {
+    search: {
+      url: '/?s={q}&post_type=wp-manga',
+      results: '.c-tabs-item__content, .c-tabs-item, .page-item-detail',
+      link: 'a[href*="manga/"], a.tab-thumb, .post-title a',
+      title: '.post-title, h3, h4',
+    },
+    chapters: {
+      list: '.wp-manga-chapter, li.wp-manga-chapter, .listing-chapters li',
+      link: 'a',
+    },
+    chapter: {
+      pages: '.reading-content img, .page-break img, .text-center img',
+      imgAttr: ['data-src', 'data-lazy-src', 'src'],
+    },
+  },
+};
+
+// MangaPill — a custom manga reader site with static HTML (no JS rendering).
+// Search returns results in a CSS grid, chapters on the detail page, and
+// page images are in static <img> tags with data-src attributes.
+export const mangaPill: Preset = {
+  id: 'mangapill',
+  name: 'MangaPill',
+  hosts: ['mangapill.com'],
+  detect: /MangaPill|mangapill/i,
+  driver: 'html',
+  config: {
+    search: {
+      url: '/search?q={q}',
+      results: 'div.my-3.grid > div',
+      link: 'a[href^="/manga/"]',
+      title: 'a.mb-2',
+    },
+    chapters: {
+      list: '#chapters a[href^="/chapters/"]',
+      link: ':scope',
+    },
+    chapter: {
+      pages: 'img.js-page',
+      imgAttr: ['data-src', 'src'],
+    },
+  },
+};
+
+export const PRESETS: Preset[] = [madara, mangaReader, mangaDex, asura, mangaFire, mangaStream, genkan, wpManga, mangaPill, comick, comickApi];
 
 export function presetById(id?: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id);

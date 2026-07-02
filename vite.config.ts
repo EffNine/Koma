@@ -62,6 +62,6 @@ export default defineConfig({
     devScrapeProxy(),
   ],
   clearScreen: false,
-  server: { port: 5173, strictPort: true },
+  server: { port: 5174, strictPort: true },
   build: { target: 'esnext' },
 });

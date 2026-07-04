@@ -1,6 +1,6 @@
 # ADR 0002 — AniList as catalog, not COMICK
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR 0004
 - **Date:** 2026-06-28
 - **Supersedes:** the COMICK-catalog decision from the initial grilling (recorded in the original plan as D6).
 

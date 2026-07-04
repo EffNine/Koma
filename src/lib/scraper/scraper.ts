@@ -1,10 +1,6 @@
-import { presetById } from './presets';
+import { driverFor } from './driver';
 import type { ScrapedChapter, ScrapedSeries } from './engine';
 import type { Source } from './sources';
-import { htmlDriver } from './htmlDriver';
-import { mangaDexDriver } from './mangaDexDriver';
-import { comickDriver } from './comickDriver';
-import { comickApiDriver } from './comickApiDriver';
 
 export async function findSeries(source: Source, query: string): Promise<ScrapedSeries | null> {
   return driverFor(source).findSeries(source, query);
@@ -16,12 +12,4 @@ export async function getChapters(source: Source, seriesUrl: string): Promise<Sc
 
 export async function getPages(source: Source, chapterUrl: string): Promise<string[]> {
   return driverFor(source).getPages(source, chapterUrl);
-}
-
-function driverFor(source: Source) {
-  const driver = presetById(source.preset)?.driver;
-  if (driver === 'mangadex') return mangaDexDriver;
-  if (driver === 'comick') return comickDriver;
-  if (driver === 'comick-api') return comickApiDriver;
-  return htmlDriver;
 }

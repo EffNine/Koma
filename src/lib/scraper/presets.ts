@@ -6,12 +6,14 @@ export interface PresetConfig {
   chapter: { pages: string; imgAttr: string[] };
 }
 
+import type { DriverId } from './driver';
+
 export interface Preset {
   id: string;
   name: string;
   hosts?: string[];
   detect: RegExp;
-  driver?: 'html' | 'mangadex' | 'comick' | 'comick-api';
+  driver?: DriverId;
   config?: PresetConfig;
 }
 
@@ -69,7 +71,7 @@ export const mangaDex: Preset = {
   name: 'MangaDex',
   hosts: ['mangadex.org'],
   detect: /MangaDex|Unsupported Browser/i,
-  driver: 'mangadex',
+  driver: 'html', // MangaDex preset currently uses the HTML driver (no dedicated API driver yet)
 };
 
 export const asura: Preset = {
@@ -120,22 +122,6 @@ export const mangaFire: Preset = {
       imgAttr: ['data-src', 'src'],
     },
   },
-};
-
-export const comick: Preset = {
-  id: 'comick',
-  name: 'ComicK',
-  hosts: ['comickz.co.uk'],
-  detect: /ComicK|comickz\.co\.uk/i,
-  driver: 'comick',
-};
-
-export const comickApi: Preset = {
-  id: 'comick-api',
-  name: 'Comick Source API (50+ sources)',
-  hosts: ['comick-source-api.notaspider.dev'],
-  detect: /comick-source-api/i,
-  driver: 'comick-api',
 };
 
 // MangaStream — a common custom PHP theme used by many scanlation groups.
@@ -215,34 +201,23 @@ export const wpManga: Preset = {
   },
 };
 
-// MangaPill — a custom manga reader site with static HTML (no JS rendering).
-// Search returns results in a CSS grid, chapters on the detail page, and
-// page images are in static <img> tags with data-src attributes.
-export const mangaPill: Preset = {
-  id: 'mangapill',
-  name: 'MangaPill',
-  hosts: ['mangapill.com'],
-  detect: /MangaPill|mangapill/i,
-  driver: 'html',
-  config: {
-    search: {
-      url: '/search?q={q}',
-      results: 'div.my-3.grid > div',
-      link: 'a[href^="/manga/"]',
-      title: 'a.mb-2',
-    },
-    chapters: {
-      list: '#chapters a[href^="/chapters/"]',
-      link: ':scope',
-    },
-    chapter: {
-      pages: 'img.js-page',
-      imgAttr: ['data-src', 'src'],
-    },
-  },
+export const comick: Preset = {
+  id: 'comick',
+  name: 'ComicK (HTML + API hybrid)',
+  hosts: ['comickz.co.uk'],
+  detect: /ComicK|comickz\.co\.uk/i,
+  driver: 'comick',
 };
 
-export const PRESETS: Preset[] = [madara, mangaReader, mangaDex, asura, mangaFire, mangaStream, genkan, wpManga, mangaPill, comick, comickApi];
+export const comickApi: Preset = {
+  id: 'comick-api',
+  name: 'ComicK API (direct api.comick.io)',
+  hosts: ['api.comick.io'],
+  detect: /api\.comick\.io/i,
+  driver: 'comick-api',
+};
+
+export const PRESETS: Preset[] = [madara, mangaReader, asura, mangaFire, mangaStream, genkan, wpManga, comick, comickApi];
 
 export function presetById(id?: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id);

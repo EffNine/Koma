@@ -6,8 +6,6 @@ export interface SourceConfig {
   search?: { results?: string; link?: string; title?: string; url?: string };
   chapters?: { list?: string; link?: string };
   chapter?: { pages?: string; imgAttr?: string[] };
-  /** For the comick-api driver: which upstream source to query (e.g. 'mangaloom', 'weebcentral'). */
-  apiSourceId?: string;
 }
 
 export interface Source {
@@ -80,19 +78,22 @@ export async function addByUrl(rawUrl: string): Promise<AddedSource> {
 }
 
 export async function importSources(json: string): Promise<Source[]> {
-  const arr = JSON.parse(json) as Partial<Source>[];
+  const parsed = JSON.parse(json);
+  const arr = (Array.isArray(parsed) ? parsed : parsed?.sources) as Partial<Source>[];
+  if (!Array.isArray(arr)) throw new Error('Source manifest must be an array or {sources: [...]}');
   const out: Source[] = [];
   let idx = await db.sources.count();
   for (const s of arr) {
     if (!s?.url) continue;
     const base = normalizeBase(s.url);
+    const id = new URL(base).host;
     const src: Source = {
-      id: new URL(base).host,
+      id,
       name: s.name || friendlySourceName(base),
       url: base,
       preset: s.preset,
       enabled: s.enabled ?? true,
-      priority: s.priority ?? idx++,
+      priority: typeof s.priority === 'number' ? s.priority : idx++,
       config: s.config,
       addedAt: Date.now(),
       status: s.status ?? (s.preset ? 'ready' : 'needs-config'),
@@ -103,6 +104,20 @@ export async function importSources(json: string): Promise<Source[]> {
     out.push(src);
   }
   return out;
+}
+
+export async function exportSources(): Promise<string> {
+  const rows = await db.sources.toArray();
+  const clean = rows.map((s) => ({
+    id: s.id,
+    name: s.name,
+    url: s.url,
+    preset: s.preset,
+    enabled: s.enabled,
+    priority: s.priority,
+    config: s.config,
+  }));
+  return JSON.stringify({ sources: clean, exportedAt: Date.now() }, null, 2);
 }
 
 export async function recheckSource(id: string): Promise<Source | undefined> {
@@ -133,8 +148,7 @@ export function friendlySourceName(base: string): string {
   const host = new URL(base).host.replace(/^www\./, '');
   const known: Record<string, string> = {
     'comickz.co.uk': 'ComicK',
-    'mangapill.com': 'MangaPill',
-    'comick-source-api.notaspider.dev': 'Comick Source API (50+ sources)',
+    'api.comick.io': 'ComicK API',
   };
   return known[host] ?? host;
 }

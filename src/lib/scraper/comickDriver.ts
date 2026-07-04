@@ -95,13 +95,17 @@ export function extractChapterData(html: string): CKChapterData | null {
   );
 }
 
+function baseUrl(source: Source): string {
+  return source.url.replace(/\/+$/, '');
+}
+
 export const comickDriver: ScraperDriver = {
   async findSeries(source: Source, query: string) {
-    const url = `${source.url.replace(/\/+$/, '')}/search?q=${encodeURIComponent(query)}`;
+    const url = `${baseUrl(source)}/search?q=${encodeURIComponent(query)}`;
     const html = await fetchText(url, { referer: source.url, headers: CK_HEADERS });
     const results = extractSearchData(html);
     const candidates = results.map((r) => ({
-      url: `${source.url.replace(/\/+$/, '')}/comic/${r.slug}`,
+      url: `${baseUrl(source)}/comic/${r.slug}`,
       title: r.title,
     }));
     return matchSeries(candidates, query);
@@ -110,23 +114,28 @@ export const comickDriver: ScraperDriver = {
   async getChapters(source: Source, seriesUrl: string) {
     // Extract the slug from the series URL
     const slug = seriesUrl.split('/').filter(Boolean).pop() ?? '';
-    const baseUrl = `${source.url.replace(/\/+$/, '')}/api/comics/${slug}/chapter-list?lang=en`;
-    const first = await fetchChapterListPage(baseUrl, source.url, 1);
+    const base = baseUrl(source);
+    const apiBase = `${base}/api/comics/${slug}/chapter-list?lang=en`;
+    const first = await fetchChapterListPage(apiBase, source.url, 1);
     const lastPage = Math.max(1, first.pagination?.last_page ?? 1);
-    const pages = [first, ...(await fetchRemainingChapterPages(baseUrl, source.url, lastPage))];
+    const pages = [first, ...(await fetchRemainingChapterPages(apiBase, source.url, lastPage))];
     const seen = new Set<string>();
-    return pages.flatMap((page) => page.data).filter((ch) => {
-      const key = `${ch.hid}:${ch.chap}:${ch.lang}`;
-      if (seen.has(key)) return false;
-      seen.add(key);
-      return true;
-    }).map((ch) => ({
-      url: `${source.url.replace(/\/+$/, '')}/comic/${slug}/${ch.hid}-chapter-${ch.chap}-${ch.lang}`,
-      number: ch.chap,
-      title: ch.title ? `Chapter ${ch.chap}: ${ch.title}` : `Chapter ${ch.chap}`,
-      group: ch.group_name?.[0],
-      createdAt: ch.created_at,
-    })).sort((a, b) => compareChapterAsc(a.number, b.number));
+    return pages
+      .flatMap((page) => page.data)
+      .filter((ch) => {
+        const key = `${ch.hid}:${ch.chap}:${ch.lang}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      })
+      .map((ch) => ({
+        url: `${base}/comic/${slug}/${ch.hid}-chapter-${ch.chap}-${ch.lang}`,
+        number: ch.chap,
+        title: ch.title ? `Chapter ${ch.chap}: ${ch.title}` : `Chapter ${ch.chap}`,
+        group: ch.group_name?.[0],
+        createdAt: ch.created_at,
+      }))
+      .sort((a, b) => compareChapterAsc(a.number, b.number));
   },
 
   async getPages(source: Source, chapterUrl: string) {

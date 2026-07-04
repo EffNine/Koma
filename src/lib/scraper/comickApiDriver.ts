@@ -1,102 +1,135 @@
-import { compareChapterAsc, extractPages, matchSeries } from './engine';
+import { compareChapterAsc, matchSeries } from './engine';
 import type { ScraperDriver } from './driver';
 import type { Source } from './sources';
-import { fetchText } from '../net';
-import { fingerprint } from './fingerprint';
+import { fetchJson, fetchText } from '../net';
 
-// Comick Source API — a unified REST API that proxies 50+ manga sources.
-// Handles search + chapter listing. Page images fall back to scraping the
-// upstream chapter HTML since the API only serves metadata.
-// Docs: https://comick-source-api.notaspider.dev
+// Direct api.comick.io driver.
+// Talks to the public-ish ComicK REST API instead of scraping SSR HTML.
+// Endpoints are reverse-engineered from community clients; the API may change.
 
-const API_BASE = 'https://comick-source-api.notaspider.dev/api';
+const API_BASE = 'https://api.comick.io';
 
-interface ApiSearchResult {
-  id: string;
+const CK_HEADERS = {
+  'User-Agent':
+    'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  Accept: 'application/json',
+};
+
+interface CKSearchResult {
+  hid: string;
+  slug: string;
   title: string;
-  url: string;
-  coverImage?: string;
-  latestChapter?: number;
-  lastUpdated?: string;
-  rating?: number;
+  id?: number;
+  desc?: string;
+  md_covers?: Array<{ b2key?: string; url?: string }>;
+  md_titles?: Array<{ title?: string }>;
 }
 
-interface ApiChapterResult {
-  id: string;
-  number: number;
-  title: string;
-  url: string;
+interface CKChapterItem {
+  hid: string;
+  chap: string;
+  title?: string;
+  lang: string;
+  vol?: string | null;
+  group_name?: string[];
+  created_at?: string;
 }
 
-interface ApiSearchResponse {
-  results: ApiSearchResult[];
-  source: string;
+interface CKChapterListResponse {
+  chapters: CKChapterItem[];
+  total?: number;
 }
 
-interface ApiChaptersResponse {
-  chapters: ApiChapterResult[];
-  source: string;
-  totalChapters: number;
+interface CKImage {
+  url?: string;
+  b2key?: string;
+  name?: string;
 }
 
-async function apiPost<T>(path: string, body: Record<string, unknown>): Promise<T> {
-  const r = await fetch(`${API_BASE}${path}`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error(`Comick API ${r.status}`);
-  const text = await r.text();
-  // Guard against non-JSON responses
-  if (!text.startsWith('{') && !text.startsWith('[')) {
-    throw new Error(`Comick API returned non-JSON: ${text.substring(0, 100)}`);
-  }
-  return JSON.parse(text) as T;
-}
-
-export function upstreamHtmlSource(source: Source, chapterUrl: string, html: string): Source {
-  const origin = new URL(chapterUrl).origin + '/';
-  return {
-    ...source,
-    id: new URL(origin).host,
-    name: new URL(origin).host,
-    url: origin,
-    preset: fingerprint(html) || 'madara',
+interface CKChapterResponse {
+  chapter?: {
+    hid?: string;
+    chap?: string;
+    lang?: string;
+    md_images?: CKImage[];
+    images?: CKImage[];
   };
+  md_images?: CKImage[];
+}
+
+function imageUrl(img: CKImage): string | null {
+  if (img.url) return img.url;
+  if (img.b2key) return `https://meo.comick.pictures/${img.b2key}`;
+  return null;
+}
+
+function chapterUrl(source: Source, slug: string, ch: CKChapterItem): string {
+  const base = source.url.replace(/\/+$/, '');
+  return `${base}/comic/${slug}/${ch.hid}-chapter-${ch.chap}-${ch.lang}`;
 }
 
 export const comickApiDriver: ScraperDriver = {
   async findSeries(source: Source, query: string) {
-    const apiSource = source.config?.apiSourceId || 'atsumoe';
-    const data = await apiPost<ApiSearchResponse>('/search', { query, source: apiSource });
-    if (!data.results?.length) return null;
-    const candidates = data.results.map((r) => ({
-      url: r.url,
+    const url = `${API_BASE}/v1.0/search?q=${encodeURIComponent(query)}&limit=20&page=1`;
+    const results = await fetchJson<CKSearchResult[]>(url, {
+      referer: source.url,
+      headers: CK_HEADERS,
+    });
+    if (!Array.isArray(results) || results.length === 0) return null;
+    const candidates = results.map((r) => ({
+      url: `${source.url.replace(/\/+$/, '')}/comic/${r.slug}`,
       title: r.title,
     }));
     return matchSeries(candidates, query);
   },
 
   async getChapters(source: Source, seriesUrl: string) {
-    const apiSource = source.config?.apiSourceId || 'atsumoe';
-    const data = await apiPost<ApiChaptersResponse>('/chapters', { url: seriesUrl, source: apiSource });
-    if (!data.chapters?.length) return [];
-    return data.chapters.map((ch) => ({
-      url: ch.url,
-      number: String(ch.number),
-      title: ch.title || `Chapter ${ch.number}`,
-    })).sort((a, b) => compareChapterAsc(a.number, b.number));
+    const slug = seriesUrl.split('/').filter(Boolean).pop() ?? '';
+    const hid = await resolveHidBySlug(source, slug);
+    if (!hid) return [];
+    const url = `${API_BASE}/comic/${hid}/chapters?lang=en&limit=10000`;
+    const data = await fetchJson<CKChapterListResponse>(url, {
+      referer: source.url,
+      headers: CK_HEADERS,
+    });
+    if (!Array.isArray(data?.chapters)) return [];
+    return data.chapters
+      .map((ch) => ({
+        url: chapterUrl(source, slug, ch),
+        number: ch.chap,
+        title: ch.title ? `Chapter ${ch.chap}: ${ch.title}` : `Chapter ${ch.chap}`,
+        group: ch.group_name?.[0],
+        createdAt: ch.created_at,
+      }))
+      .sort((a, b) => compareChapterAsc(a.number, b.number));
   },
 
   async getPages(source: Source, chapterUrl: string) {
-    // The API doesn't serve page images. Fetch the upstream chapter page and
-    // scrape it with the upstream site's own detected HTML preset.
-    try {
-      const referer = new URL(chapterUrl).origin + '/';
-      const html = await fetchText(chapterUrl, { referer });
-      return extractPages(html, upstreamHtmlSource(source, chapterUrl, html));
-    } catch {
-      return [];
-    }
+    // chapterUrl is the website chapter path; extract the chapter hid from it.
+    const hid = chapterUrl.split('/').filter(Boolean).pop()?.split('-')[0] ?? '';
+    if (!hid) return [];
+    const url = `${API_BASE}/chapter/${hid}`;
+    const data = await fetchJson<CKChapterResponse>(url, {
+      referer: source.url,
+      headers: CK_HEADERS,
+    });
+    const images = data?.chapter?.md_images ?? data?.chapter?.images ?? data?.md_images ?? [];
+    return images.map(imageUrl).filter((u): u is string => !!u);
   },
 };
+
+async function resolveHidBySlug(source: Source, slug: string): Promise<string | null> {
+  // The API search returns hid directly; try a slug search first.
+  const url = `${API_BASE}/v1.0/search?q=${encodeURIComponent(slug)}&limit=10&page=1`;
+  try {
+    const results = await fetchJson<CKSearchResult[]>(url, {
+      referer: source.url,
+      headers: CK_HEADERS,
+    });
+    if (!Array.isArray(results)) return null;
+    const match = results.find((r) => r.slug.toLowerCase() === slug.toLowerCase()) ?? results[0];
+    return match?.hid ?? null;
+  } catch {
+    return null;
+  }
+}

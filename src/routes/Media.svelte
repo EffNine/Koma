@@ -5,23 +5,36 @@
   import { stripHtml } from '../lib/util';
   import { enabledSources, type Source } from '../lib/scraper/sources';
   import type { ScrapedChapter } from '../lib/scraper/engine';
-  import { compareChapterDesc } from '../lib/scraper/engine';
   import {
     followTitle as followDetail,
     unfollowTitle as unfollowDetail,
     loadTitleDetail,
   } from '../lib/media/titleDetail';
-  import { getTitlePreference } from '../lib/media/titlePreferences';
+  import {
+    getTitlePreference,
+    savePreferredSource,
+    type TitlePreference,
+  } from '../lib/media/titlePreferences';
   import { resolveChapters } from '../lib/media/chapterResolver';
+  import { loadSourceHealth, rankSources } from '../lib/scraper/sourceHealth';
+  import { db } from '../lib/db';
   import {
     markChapterUnread,
     recordChapterRead,
     getProgress,
     getReadChapters,
+    setReadingList,
+    type ReadingList,
   } from '../lib/tracker/local';
   import { savePreferredGroup } from '../lib/media/titlePreferences';
   import { groupChapters, type ChapterGroup } from '../lib/media/chapterGroups';
   import { groupUrl } from '../lib/scraper/groupMapping';
+  import EmptyState from '../lib/components/EmptyState.svelte';
+  import Toast from '../lib/components/Toast.svelte';
+  import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
+  import { chapterSummary, groupLabel } from '../lib/ui/formatting';
+  import { relativeTime } from '../lib/util';
+  import type { ConfirmActionId } from '../lib/ui/confirm';
 
   let id = $derived(Number($route.path.split('/').filter(Boolean)[1]));
   let t = $state<Title | undefined>();
@@ -39,6 +52,12 @@
   let progress = $state<{ chapterNumber?: string } | undefined>();
   let readChapters = $state<Set<string>>(new Set());
   let preferredGroup = $state<string | undefined>(undefined);
+  let titlePref = $state<TitlePreference | undefined>(undefined);
+  let readingList = $state<ReadingList | undefined>(undefined);
+
+  // Feedback + confirmation
+  let toast = $state<{ text: string; tone: 'ok' | 'err' | 'warn' | 'info' } | null>(null);
+  let confirm = $state<{ action: ConfirmActionId; subject?: string; onConfirm: () => void } | null>(null);
 
   // Load title detail
   $effect(() => {
@@ -68,24 +87,37 @@
     autoResolve(title);
   });
 
-  async function loadPreferredGroup() {
+  async function loadTitleMetadata() {
     if (!t) return;
     try {
       const pref = await getTitlePreference(t.id);
+      titlePref = pref;
       preferredGroup = pref?.preferredGroup;
+    } catch {}
+    try {
+      const tracked = await db.trackedTitles.get(t.id);
+      readingList = tracked?.readingList;
     } catch {}
   }
 
   async function autoResolve(title: Title) {
     const allSources = await enabledSources();
-    sources = allSources;
     if (allSources.length === 0) {
+      sources = [];
+      chapterSource = undefined;
+      chapterLoading = false;
+      chapterErr = '';
+      return;
+    }
+    const health = await loadSourceHealth(allSources);
+    const ranked = rankSources(allSources, health, titlePref?.preferredSourceId);
+    sources = ranked;
+    if (ranked.length === 0) {
       chapterSource = undefined;
       chapterLoading = false;
       return;
     }
-    // Try each enabled source in priority order until one returns chapters
-    for (const source of allSources) {
+    for (const source of ranked) {
       try {
         const result = await resolveChapters(source, title);
         if ('err' in result) continue;
@@ -94,13 +126,9 @@
           chapterSource = source;
           chapters = result.chapters;
           chapterLoading = false;
-          // Load progress for Start Reading button
           loadProgress(source.id);
-          // Load read chapters for status indicators
           loadReadChapters(source.id);
-          // Load preferred group for selection and grouping
-          loadPreferredGroup();
-          // Load group links in background
+          loadTitleMetadata();
           loadGroupLinks(result.chapters);
           return;
         }
@@ -149,22 +177,6 @@
   let totalPages = $derived(Math.ceil(chapterGroups.length / chapterPerPage));
   let currentPage = $derived(Math.min(chapterPage, totalPages));
 
-  function relativeTime(iso: string | undefined): string {
-    if (!iso) return '';
-    const d = new Date(iso);
-    const now = new Date();
-    const diff = now.getTime() - d.getTime();
-    const mins = Math.floor(diff / 60000);
-    const hours = Math.floor(diff / 3600000);
-    const days = Math.floor(diff / 86400000);
-    if (mins < 1) return 'Just now';
-    if (mins < 60) return `${mins}m ago`;
-    if (hours < 24) return `${hours}h ago`;
-    if (days < 30) return `${days}d ago`;
-    if (days < 365) return `${Math.floor(days / 30)}mo ago`;
-    return `${Math.floor(days / 365)}y ago`;
-  }
-
   function scrollToChapter(num: string) {
     const el = document.getElementById(`ch-${num}`);
     if (el) el.scrollIntoView({ behavior: 'smooth', block: 'center' });
@@ -185,8 +197,6 @@
     if (!t || chapters.length === 0) return;
     const source = chapterSource ?? sources.find((s) => s.enabled);
     if (!source) return;
-
-    // If we have progress, resume from the last-read chapter
     if (progress?.chapterNumber) {
       const resume = chapterGroups.find((g) => g.number === progress!.chapterNumber);
       if (resume) {
@@ -194,8 +204,6 @@
         return;
       }
     }
-
-    // Otherwise start from the last chapter (lowest number = chapter 1).
     const last = chapterGroups[chapterGroups.length - 1]?.preferred;
     if (last) await readChapter(last);
   }
@@ -204,32 +212,68 @@
     if (!t || chapters.length === 0) return;
     const source = chapterSource ?? sources.find((s) => s.enabled);
     if (!source) return;
-    // Start from the last chapter in the list (lowest number = chapter 1).
     const first = chapterGroups[chapterGroups.length - 1]?.preferred;
     if (first) await readChapter(first);
   }
 
-  async function toggleFollow() {
+  function askUnfollow() {
+    if (!t) return;
+    confirm = {
+      action: 'unfollow',
+      subject: name,
+      onConfirm: () => {
+        void doUnfollow();
+        confirm = null;
+      },
+    };
+  }
+
+  async function doUnfollow() {
     if (!t || followBusy) return;
     followBusy = true;
     try {
-      if (followed) {
-        await unfollowDetail(t.id);
-        followed = false;
-      } else {
-        await followDetail(t);
-        followed = true;
-      }
+      await unfollowDetail(t.id);
+      followed = false;
+      toast = { text: `Unfollowed ${name}`, tone: 'ok' };
+    } catch (e) {
+      toast = { text: 'Unfollow failed: ' + String(e), tone: 'err' };
     } finally {
       followBusy = false;
     }
   }
 
-  function groupLabel(group: string | undefined, altCount: number, pref?: string): string {
-    if (!group) return `${altCount + 1} groups`;
-    const suffix = group === pref ? '' : ' (fallback)';
-    if (altCount === 0) return group + suffix;
-    return `${group} +${altCount}${suffix}`;
+  async function doFollow() {
+    if (!t || followBusy) return;
+    followBusy = true;
+    try {
+      await followDetail(t);
+      followed = true;
+      toast = { text: `Following ${name}`, tone: 'ok' };
+    } catch (e) {
+      toast = { text: 'Follow failed: ' + String(e), tone: 'err' };
+    } finally {
+      followBusy = false;
+    }
+  }
+
+  async function toggleFollow() {
+    if (!t) return;
+    if (followed) askUnfollow();
+    else await doFollow();
+  }
+
+  async function onSetReadingList(next: ReadingList | undefined) {
+    if (!t) return;
+    await setReadingList(t.id, next);
+    readingList = next;
+    toast = { text: next ? `Saved to ${next}` : 'Reading list cleared', tone: 'ok' };
+  }
+
+  async function onSetPreferredSource(sourceId: string | undefined) {
+    if (!t) return;
+    await savePreferredSource(t.id, sourceId);
+    titlePref = { ...(titlePref ?? { mediaId: t.id, updatedAt: 0 }), preferredSourceId: sourceId, updatedAt: Date.now() };
+    toast = { text: sourceId ? 'Preferred source saved' : 'Reverted to automatic source', tone: 'ok' };
   }
 
   async function readAlt(group: ChapterGroup, selectedValue: string) {
@@ -258,20 +302,44 @@
     if (!t || !chapterNumber) return;
     const source = chapterSource ?? sources.find((s) => s.enabled);
     if (!source) return;
-    const progress = await markChapterUnread(t.id, source.id, chapterNumber);
-    // no feedback needed, tracker handles it silently
+    await markChapterUnread(t.id, source.id, chapterNumber);
+    readChapters = new Set(readChapters);
+    readChapters.delete(chapterNumber);
+    toast = { text: `Marked chapter ${chapterNumber} unread`, tone: 'ok' };
+  }
+
+  function back() {
+    history.length > 1 ? history.back() : go('/');
   }
 </script>
 
-<button class="btn back" onclick={() => go('/')}>← Back</button>
+<button class="btn back" onclick={back}>Back</button>
+
+{#if toast}
+  <Toast text={toast.text} tone={toast.tone} onDismiss={() => (toast = null)} />
+{/if}
+
+{#if confirm}
+  <ConfirmDialog
+    action={confirm.action}
+    subject={confirm.subject}
+    onConfirm={confirm.onConfirm}
+    onCancel={() => (confirm = null)}
+  />
+{/if}
 
 {#if err}
-  <div class="card err">{err}</div>
+  <EmptyState id="generic" context={err} compact />
 {:else if loading || !t}
   <div class="card skel" style="height:260px"></div>
 {:else}
   <div class="detail">
-    <img class="cover" src={t.cover} alt={name} />
+    <div class="cover-wrap">
+      <img class="cover" src={t.cover} alt={name} />
+      {#if followed}
+        <span class="follow-badge">Following</span>
+      {/if}
+    </div>
     <div class="info">
       <h1 class="h1">{name}</h1>
       <div class="meta">
@@ -280,6 +348,7 @@
         {#if t.year}<span>{t.year}</span>{/if}
         {#if t.chapters}<span>{t.chapters} ch.</span>{/if}
         {#if t.averageScore}<span>★ {(t.averageScore / 10).toFixed(1)}</span>{/if}
+        {#if progress?.chapterNumber}<span class="progress-chip">Read Ch. {progress.chapterNumber}</span>{/if}
       </div>
       {#if t.genres?.length}
         <div class="genres">{#each t.genres as g (g)}<span class="gchip">{g}</span>{/each}</div>
@@ -299,31 +368,67 @@
         </button>
         {#if t.siteUrl}<a class="btn" href={t.siteUrl} target="_blank" rel="noopener">AniList ↗</a>{/if}
       </div>
+
+      <div class="preferences-line">
+        <div class="pref-block">
+          <span class="pref-label">List</span>
+          <select class="pref-select" value={readingList ?? ''} onchange={(e) => onSetReadingList((e.currentTarget.value || undefined) as ReadingList | undefined)}>
+            <option value="">Auto</option>
+            <option value="Reading">Reading</option>
+            <option value="Plan to Read">Plan to Read</option>
+            <option value="Completed">Completed</option>
+          </select>
+        </div>
+        <div class="pref-block">
+          <span class="pref-label">Source</span>
+          <select class="pref-select" value={titlePref?.preferredSourceId ?? ''} onchange={(e) => onSetPreferredSource(e.currentTarget.value || undefined)}>
+            <option value="">Auto ({chapterSource?.name ?? 'best'})</option>
+            {#each sources as s (s.id)}
+              <option value={s.id}>{s.name}</option>
+            {/each}
+          </select>
+        </div>
+        {#if preferredGroup}
+          <div class="pref-block">
+            <span class="pref-label">Group</span>
+            <span class="pref-value">{preferredGroup}</span>
+          </div>
+        {/if}
+      </div>
+      <div class="source-line">
+        {#if chapterLoading}
+          Resolving chapters from enabled sources...
+        {:else if chapterSource}
+          Chapters from {chapterSource.name}{#if preferredGroup} with {preferredGroup} preferred{/if}
+        {:else if sources.length === 0}
+          Add a source in Settings to start reading.
+        {:else if chapterErr}
+          {chapterErr}
+        {/if}
+      </div>
     </div>
   </div>
 
-  <!-- Chapters section — ComicK-style, no source picker -->
+  <!-- Chapters section -->
   <section class="chapters-section">
     <div class="chap-head">
-      <h2>Chapters</h2>
+      <h2 class="h2">Chapters</h2>
       {#if chapters.length}
         <div class="chap-meta">
-          <span>{chapters.length} chapter{chapters.length === 1 ? '' : 's'}</span>
+          <span>{chapterSummary(chapterGroups.length, chapters.length)}</span>
         </div>
       {/if}
     </div>
 
     {#if chapterLoading}
       <div class="card loading-chapters">Loading chapters…</div>
+    {:else if sources.length === 0}
+      <EmptyState id="sources" compact />
     {:else if chapterErr}
       <div class="card errbox">{chapterErr} <button class="btn small-btn" onclick={() => go('/settings')}>Manage Sources</button></div>
     {:else if chapters.length === 0}
-      <div class="card empty-chapters">
-        No chapters found. Add a source in Settings to find chapters for this title.
-        <button class="btn small-btn" onclick={() => go('/settings')} style="margin-top:10px">Manage Sources</button>
-      </div>
+      <EmptyState id="chapters" compact />
     {:else}
-      <!-- ComicK-style chapter table header -->
       <div class="chap-table-header">
         <span class="chap-col-chap">Chap</span>
         <span class="chap-col-uploaded">Uploaded</span>
@@ -373,7 +478,6 @@
         {/each}
       </div>
 
-      <!-- Pagination + Goto -->
       {#if chapterGroups.length > chapterPerPage}
         <div class="chap-footer">
           <div class="chap-pages">
@@ -401,26 +505,47 @@
 
 <style>
   .back { margin-bottom: 16px; }
-  .detail { display: flex; gap: 22px; align-items: flex-start; }
-  .cover { width: 190px; aspect-ratio: 3/4; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); flex-shrink: 0; }
+  .detail {
+    display: grid;
+    grid-template-columns: 190px minmax(0, 1fr);
+    gap: 24px;
+    align-items: flex-start;
+    padding: clamp(16px, 2.4vw, 24px);
+    border: 1px solid var(--border-soft);
+    border-radius: var(--radius);
+    background:
+      linear-gradient(135deg, color-mix(in srgb, var(--accent) 9%, var(--surface)), var(--surface) 54%),
+      var(--surface);
+  }
+  .cover-wrap { position: relative; width: 190px; flex-shrink: 0; }
+  .cover { width: 100%; aspect-ratio: 3/4; object-fit: cover; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); display: block; box-shadow: 0 16px 36px rgba(0, 0, 0, .34); }
+  .follow-badge { position: absolute; left: 10px; bottom: 10px; border-radius: 999px; padding: 4px 9px; font-size: 12px; font-weight: 700; color: color-mix(in srgb, var(--ok) 76%, white); background: color-mix(in srgb, var(--ok) 22%, #0b0c0d); border: 1px solid color-mix(in srgb, var(--ok) 38%, transparent); }
   .info { flex: 1; min-width: 0; }
-  .meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 14px; margin: 6px 0 14px; align-items: center; }
-  .chip { background: var(--accent); color: #fff; padding: 2px 9px; border-radius: 20px; font-size: 12px; }
+  .info .h1 { font-size: clamp(28px, 4vw, 44px); line-height: 1.04; margin-bottom: 8px; }
+  .meta { display: flex; gap: 8px; flex-wrap: wrap; color: var(--muted); font-size: 13px; margin: 6px 0 14px; align-items: center; }
+  .chip, .progress-chip { background: var(--accent); color: #17110a; padding: 3px 9px; border-radius: 999px; font-size: 12px; font-weight: 720; }
+  .progress-chip { background: var(--ok-soft); color: color-mix(in srgb, var(--ok) 76%, white); border: 1px solid color-mix(in srgb, var(--ok) 35%, transparent); }
   .genres { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 14px; }
-  .gchip { background: var(--surface); border: 1px solid var(--border); border-radius: 20px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
+  .gchip { background: color-mix(in srgb, var(--elevated) 80%, transparent); border: 1px solid var(--border-soft); border-radius: 999px; padding: 3px 10px; font-size: 12px; color: var(--muted); }
   .desc { white-space: pre-wrap; color: var(--text); font-size: 14.5px; line-height: 1.65; max-width: 720px; }
-  .actions { display: flex; gap: 8px; margin-top: 18px; }
+  .actions { display: flex; gap: 8px; margin-top: 18px; flex-wrap: wrap; }
   .btn[disabled] { opacity: .5; cursor: not-allowed; }
-  .err { color: var(--danger); }
+  .source-line { min-height: 22px; margin-top: 12px; color: var(--muted); font-size: 13px; }
+  .preferences-line { display: flex; gap: 16px; align-items: center; flex-wrap: wrap; margin-top: 14px; }
+  .pref-block { display: flex; gap: 8px; align-items: center; }
+  .pref-label { font-size: 11px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: var(--muted-2); }
+  .pref-select { min-height: 30px; padding: 0 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
+  .pref-value { font-size: 13px; color: var(--muted); }
 
-  /* Chapters section — ComicK-style */
+  /* Chapters section */
   .chapters-section { margin-top: 24px; }
   .chap-head { display: flex; justify-content: space-between; gap: 10px; align-items: end; margin-bottom: 10px; flex-wrap: wrap; }
-  .chap-head h2 { margin: 0; font-size: 18px; font-weight: 650; }
+  .chap-head h2 { margin: 0; }
   .chap-meta { color: var(--muted); font-size: 13px; }
-  .chap-table-header { display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; padding: 8px 12px; font-size: 12px; font-weight: 600; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.5px; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
-  .chapters { display: flex; flex-direction: column; max-height: 540px; overflow: auto; padding-right: 2px; }
-  .chapter-row { display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; align-items: center; padding: 8px 12px; border-radius: var(--radius-sm); transition: background .1s; }
+  .chap-table-header { display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; padding: 8px 12px; font-size: 12px; font-weight: 700; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.06em; border-bottom: 1px solid var(--border); margin-bottom: 4px; }
+  .chapters { display: flex; flex-direction: column; max-height: 540px; overflow: auto; padding-right: 2px; border: 1px solid var(--border-soft); border-radius: var(--radius); background: color-mix(in srgb, var(--surface) 76%, transparent); }
+  .chapter-row { display: grid; grid-template-columns: 1fr 100px 1fr auto; gap: 10px; align-items: center; padding: 9px 12px; border-radius: 0; border-bottom: 1px solid var(--border-soft); transition: background .1s; }
+  .chapter-row:last-child { border-bottom: 0; }
   .chapter-row:hover { background: var(--elevated); }
   .chapter-row.read { opacity: 0.6; }
   .chapter-row.read .chap-num { color: var(--muted-2); }
@@ -432,9 +557,9 @@
   .chap-group { font-size: 12px; color: var(--muted-2); }
   .chap-group-link { font-size: 12px; color: var(--accent); text-decoration: none; }
   .chap-group-link:hover { text-decoration: underline; }
-  .chap-group-select { font-size: 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; max-width: 160px; }
+  .chap-group-select { font-size: 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; max-width: 180px; }
   .chap-col-actions { display: flex; gap: 4px; }
-  .small-btn { padding: 4px 8px; font-size: 12px; min-width: 28px; text-align: center; }
+  .small-btn { min-height: 30px; padding: 0 8px; font-size: 12px; min-width: 30px; text-align: center; }
   .chap-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 12px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid var(--border); }
   .chap-pages { font-size: 13px; color: var(--muted); }
   .chap-nav { display: flex; gap: 6px; }
@@ -443,11 +568,14 @@
   .goto-input { width: 60px; padding: 4px 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; text-align: center; }
   .loading-chapters { padding: 24px; text-align: center; color: var(--muted); }
   .errbox { color: var(--danger); padding: 16px; display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-  .empty-chapters { padding: 24px; text-align: center; color: var(--muted); }
 
   @media (max-width: 800px) {
-    .detail { flex-direction: column; }
-    .cover { width: 150px; }
+    .detail { grid-template-columns: 112px minmax(0, 1fr); gap: 14px; padding: 14px; }
+    .cover-wrap { width: 112px; grid-row: 1 / 4; }
+    .info { display: contents; }
+    .info .h1 { font-size: 24px; }
+    .info .h1, .meta, .genres { grid-column: 2; }
+    .desc, .actions, .source-line { grid-column: 1 / -1; }
     .chap-table-header { display: none; }
     .chapter-row { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
     .chap-col-chap { grid-column: 1; grid-row: 1; }

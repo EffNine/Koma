@@ -1,0 +1,83 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "K oma" [ref=e5] [cursor=pointer]:
+      - /url: "#/"
+      - generic [ref=e6]: K
+      - text: oma
+    - navigation [ref=e7]:
+      - link "Home" [ref=e8] [cursor=pointer]:
+        - /url: "#/"
+      - link "Library" [ref=e9] [cursor=pointer]:
+        - /url: "#/library"
+      - link "Search" [ref=e10] [cursor=pointer]:
+        - /url: "#/search"
+      - link "Browse" [ref=e11] [cursor=pointer]:
+        - /url: "#/categories"
+      - link "Activity" [ref=e12] [cursor=pointer]:
+        - /url: "#/activity"
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: "#/settings"
+    - textbox "Find a title" [ref=e15]
+  - main [ref=e16]:
+    - generic [ref=e17]:
+      - generic [ref=e18]:
+        - heading "Browse" [level=1] [ref=e19]
+        - paragraph [ref=e20]: Filter manga, manhwa, and manhua by genre, country, status, and more.
+      - generic [ref=e21]:
+        - button "▼ Filters" [ref=e23] [cursor=pointer]
+        - generic [ref=e24]:
+          - generic [ref=e25]:
+            - generic [ref=e26]: Origin
+            - generic [ref=e27]:
+              - button "All" [ref=e28] [cursor=pointer]
+              - button "Manga (JP)" [ref=e29] [cursor=pointer]
+              - button "Manhwa (KR)" [ref=e30] [cursor=pointer]
+              - button "Manhua (CN)" [ref=e31] [cursor=pointer]
+          - generic [ref=e32]:
+            - generic [ref=e33]: Sort
+            - generic [ref=e34]:
+              - button "Trending" [ref=e35] [cursor=pointer]
+              - button "Popular" [ref=e36] [cursor=pointer]
+              - button "Latest" [ref=e37] [cursor=pointer]
+          - generic [ref=e38]:
+            - generic [ref=e39]: Status
+            - generic [ref=e40]:
+              - button "All" [ref=e41] [cursor=pointer]
+              - button "Ongoing" [ref=e42] [cursor=pointer]
+              - button "Completed" [ref=e43] [cursor=pointer]
+              - button "Hiatus" [ref=e44] [cursor=pointer]
+              - button "Cancelled" [ref=e45] [cursor=pointer]
+          - generic [ref=e46]:
+            - generic [ref=e47]: Year
+            - generic [ref=e48]:
+              - spinbutton "From" [ref=e49]
+              - generic [ref=e50]: –
+              - spinbutton "To" [ref=e51]
+          - generic [ref=e52]:
+            - generic [ref=e53]: Min Chapters
+            - spinbutton "0" [ref=e54]
+          - generic [ref=e55]:
+            - generic [ref=e56]:
+              - text: Genres
+              - generic [ref=e57]: Click to include · Right-click to exclude
+            - generic [ref=e58]:
+              - button "Action" [ref=e59] [cursor=pointer]
+              - button "Adventure" [ref=e60] [cursor=pointer]
+              - button "Comedy" [ref=e61] [cursor=pointer]
+              - button "Drama" [ref=e62] [cursor=pointer]
+              - button "Ecchi" [ref=e63] [cursor=pointer]
+              - button "Fantasy" [ref=e64] [cursor=pointer]
+              - button "Horror" [ref=e65] [cursor=pointer]
+              - button "Mahou Shoujo" [ref=e66] [cursor=pointer]
+              - button "Mecha" [ref=e67] [cursor=pointer]
+              - button "Music" [ref=e68] [cursor=pointer]
+              - button "Mystery" [ref=e69] [cursor=pointer]
+              - button "Psychological" [ref=e70] [cursor=pointer]
+              - button "Romance" [ref=e71] [cursor=pointer]
+              - button "Sci-Fi" [ref=e72] [cursor=pointer]
+              - button "Slice of Life" [ref=e73] [cursor=pointer]
+              - button "Sports" [ref=e74] [cursor=pointer]
+              - button "Supernatural" [ref=e75] [cursor=pointer]
+              - button "Thriller" [ref=e76] [cursor=pointer]
+          - button "Apply Filters" [ref=e77] [cursor=pointer]
+      - generic [ref=e79]: Select filters and click "Apply Filters" to browse.

@@ -1,0 +1,45 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "K oma" [ref=e5] [cursor=pointer]:
+      - /url: "#/"
+      - generic [ref=e6]: K
+      - text: oma
+    - navigation [ref=e7]:
+      - link "Home" [ref=e8] [cursor=pointer]:
+        - /url: "#/"
+      - link "Search" [ref=e9] [cursor=pointer]:
+        - /url: "#/search"
+      - link "Categories" [ref=e10] [cursor=pointer]:
+        - /url: "#/categories"
+      - link "Activity" [ref=e11] [cursor=pointer]:
+        - /url: "#/activity"
+      - link "Library" [ref=e12] [cursor=pointer]:
+        - /url: "#/library"
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: "#/settings"
+    - textbox "Search…" [ref=e15]
+  - main [ref=e16]:
+    - generic [ref=e18]:
+      - heading "Latest Updates" [level=2] [ref=e19]
+      - button "View All" [ref=e20] [cursor=pointer]
+    - generic [ref=e29]:
+      - heading "Trending Now" [level=2] [ref=e30]
+      - button "View All" [ref=e31] [cursor=pointer]
+    - generic [ref=e40]:
+      - heading "Popular Ongoing" [level=2] [ref=e41]
+      - button "View All" [ref=e42] [cursor=pointer]
+    - generic [ref=e51]:
+      - heading "Top New" [level=2] [ref=e52]
+      - button "View All" [ref=e53] [cursor=pointer]
+    - generic [ref=e61]:
+      - heading "Browse" [level=2] [ref=e63]
+      - generic [ref=e64]:
+        - generic [ref=e65]:
+          - button "All" [ref=e66] [cursor=pointer]
+          - button "Manga" [ref=e67] [cursor=pointer]
+          - button "Manhwa" [ref=e68] [cursor=pointer]
+          - button "Manhua" [ref=e69] [cursor=pointer]
+        - combobox [ref=e70]:
+          - option "Trending" [selected]
+          - option "Popular"
+          - option "Latest"

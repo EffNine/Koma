@@ -8,6 +8,8 @@ import {
   listHistory,
   markChapterUnread,
   recordChapterRead,
+  recordReaderPage,
+  setChapterReadHook,
   unfollowTitle,
 } from '../src/lib/tracker/local.ts';
 
@@ -85,6 +87,50 @@ assert(progress.status === 'COMPLETED', 'advance past total chapters marks compl
 const history = await listHistory();
 assert(history.length >= 3, 'chapter reads create history entries');
 assert(history[0]?.chapterNumber === '13', 'history sorts newest read first');
+
+let hookCalls = 0;
+setChapterReadHook(() => {
+  hookCalls += 1;
+});
+
+await recordReaderPage({
+  title,
+  sourceId: 'asurascans.com',
+  chapterUrl: 'https://asurascans.com/chapter-14',
+  chapterNumber: '14',
+  chapterTitle: 'Chapter 14',
+  page: 1,
+  totalPages: 3,
+  readAt: 1400,
+});
+assert(hookCalls === 0, 'reader page progress before the last page does not push trackers');
+
+await recordReaderPage({
+  title,
+  sourceId: 'asurascans.com',
+  chapterUrl: 'https://asurascans.com/chapter-14',
+  chapterNumber: '14',
+  chapterTitle: 'Chapter 14',
+  page: 2,
+  totalPages: 3,
+  readAt: 1500,
+});
+progress = await getProgress(title.id, 'asurascans.com');
+assert(progress?.chapterNumber === '14', 'reader reaching the last page marks the chapter read');
+assert(hookCalls === 1, 'reader reaching the last page pushes tracker sync once');
+
+await recordReaderPage({
+  title,
+  sourceId: 'asurascans.com',
+  chapterUrl: 'https://asurascans.com/chapter-14',
+  chapterNumber: '14',
+  chapterTitle: 'Chapter 14',
+  page: 2,
+  totalPages: 3,
+  readAt: 1600,
+});
+assert(hookCalls === 1, 're-saving the same completed reader page does not push tracker sync again');
+setChapterReadHook(undefined);
 
 db.close();
 await new Promise<void>((resolve, reject) => {

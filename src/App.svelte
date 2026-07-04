@@ -11,10 +11,10 @@
 
   const links = [
     { href: '/', label: 'Home' },
+    { href: '/library', label: 'Library' },
     { href: '/search', label: 'Search' },
     { href: '/categories', label: 'Categories' },
     { href: '/activity', label: 'Activity' },
-    { href: '/library', label: 'Library' },
     { href: '/settings', label: 'Settings' },
   ];
 
@@ -25,6 +25,7 @@
 
   // ponytail: route dispatch is an if-chain. Grows as routes are added (media/[id], reader/[id]).
   let p = $derived($route.path);
+  let readerMode = $derived(p.startsWith('/reader/'));
 
   let searchQ = $state('');
   function onSearchSubmit(e: Event) {
@@ -37,22 +38,24 @@
 </script>
 
 <div class="shell">
-  <header class="topbar">
+  <header class="topbar" class:reader-mode={readerMode}>
     <a class="brand" href="#/"><span class="logo-k">K</span>oma</a>
-    <nav class="nav">
-      {#each links as l (l.href)}
-        <a class:active={active(l.href)} href={'#' + l.href}>{l.label}</a>
-      {/each}
-    </nav>
-    <form class="top-search" onsubmit={onSearchSubmit}>
-      <input
-        bind:value={searchQ}
-        placeholder="Search…"
-        class="top-search-input"
-      />
-    </form>
+    {#if !readerMode}
+      <nav class="nav">
+        {#each links as l (l.href)}
+          <a class:active={active(l.href)} href={'#' + l.href}>{l.label}</a>
+        {/each}
+      </nav>
+      <form class="top-search" onsubmit={onSearchSubmit}>
+        <input
+          bind:value={searchQ}
+          placeholder="Find a title"
+          class="top-search-input"
+        />
+      </form>
+    {/if}
   </header>
-  <main class="view">
+  <main class="view" class:reader-view={readerMode}>
     {#if p === '/'}
       <Home />
     {:else if p.startsWith('/search')}

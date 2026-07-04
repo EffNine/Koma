@@ -2,6 +2,7 @@ import type { Title } from '../catalog/types';
 import { titleName } from '../catalog/types';
 import { db } from '../db';
 import { followTitle as followLocal, unfollowTitle as unfollowLocal, type TrackedTitle } from '../tracker/local';
+import { pushFollow, pushUnfollow } from '../tracker/sync';
 
 export interface TitleDetail {
   title: Title;
@@ -18,15 +19,17 @@ export async function loadTitleDetail(mediaId: number): Promise<TitleDetail | un
 
 export async function followTitle(title: Title): Promise<void> {
   await followLocal(title);
+  void pushFollow(title);
 }
 
 export async function unfollowTitle(mediaId: number): Promise<void> {
   await unfollowLocal(mediaId);
+  void pushUnfollow(mediaId);
 }
 
 export function snapshotTitle(
   title: Title,
-  state: Pick<TrackedTitle, 'followed' | 'followedAt' | 'updatedAt'>,
+  state: Pick<TrackedTitle, 'followed' | 'followedAt' | 'updatedAt' | 'readingList'>,
 ): TrackedTitle {
   return {
     mediaId: title.id,
@@ -37,6 +40,7 @@ export function snapshotTitle(
     totalChapters: title.chapters,
     followed: state.followed,
     followedAt: state.followedAt,
+    readingList: state.readingList,
     updatedAt: state.updatedAt,
   };
 }

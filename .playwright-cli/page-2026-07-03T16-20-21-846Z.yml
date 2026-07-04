@@ -1,0 +1,33 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "K oma" [ref=e5] [cursor=pointer]:
+      - /url: "#/"
+      - generic [ref=e6]: K
+      - text: oma
+    - navigation [ref=e7]:
+      - link "Home" [ref=e8] [cursor=pointer]:
+        - /url: "#/"
+      - link "Library" [ref=e9] [cursor=pointer]:
+        - /url: "#/library"
+      - link "Search" [ref=e10] [cursor=pointer]:
+        - /url: "#/search"
+      - link "Browse" [ref=e11] [cursor=pointer]:
+        - /url: "#/categories"
+      - link "Activity" [ref=e12] [cursor=pointer]:
+        - /url: "#/activity"
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: "#/settings"
+    - textbox "Find a title" [ref=e15]
+  - main [ref=e16]:
+    - generic [ref=e210]:
+      - generic [ref=e211]:
+        - heading "Library" [level=1] [ref=e212]
+        - paragraph [ref=e213]: Followed titles and local reading history.
+      - generic [ref=e214]:
+        - button "Sync AniList" [ref=e215] [cursor=pointer]
+        - button "Refresh" [ref=e216] [cursor=pointer]
+    - generic [ref=e217]:
+      - button "Updates" [ref=e218] [cursor=pointer]
+      - button "Followed" [ref=e219] [cursor=pointer]
+      - button "History" [ref=e220] [cursor=pointer]
+    - generic [ref=e221]: No new updates. Follow titles and read some chapters to see what's new.

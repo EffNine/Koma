@@ -4,6 +4,19 @@ import { db } from '../db';
 import { chapterValue, computeProgress, computeRollback } from './progress';
 
 export type ProgressStatus = 'READING' | 'COMPLETED';
+export type ReadingList = 'Reading' | 'Plan to Read' | 'Completed';
+
+export function readingListFromStatus(status: ProgressStatus | undefined, currentList?: ReadingList): ReadingList | undefined {
+  if (status === 'COMPLETED') return 'Completed';
+  if (currentList === 'Completed' || currentList === 'Plan to Read') return currentList;
+  return status === 'READING' ? 'Reading' : currentList;
+}
+
+export function readingListFromProgress(chapterNumberValue: number, totalChapters?: number): ReadingList | undefined {
+  if (totalChapters && chapterNumberValue > totalChapters) return 'Completed';
+  if (chapterNumberValue >= 0) return 'Reading';
+  return undefined;
+}
 
 export type ChapterReadHook = (input: ChapterProgressInput, entry: ProgressEntry) => void | Promise<void>;
 
@@ -22,6 +35,7 @@ export interface TrackedTitle {
   totalChapters?: number;
   followed: boolean;
   followedAt?: number;
+  readingList?: ReadingList;
   updatedAt: number;
 }
 
@@ -67,6 +81,7 @@ export interface ChapterProgressInput {
   chapterNumber?: string | null;
   chapterTitle?: string | null;
   page?: number;
+  totalPages?: number;
   readAt?: number;
 }
 
@@ -108,6 +123,29 @@ export async function listFollowedTitles(): Promise<TrackedTitle[]> {
   // IndexedDB does not allow boolean keys, so filter in memory instead of using the index.
   const rows = await db.trackedTitles.filter((row) => row.followed).toArray();
   return rows.sort((a, b) => (b.followedAt ?? 0) - (a.followedAt ?? 0));
+}
+
+export async function listTitlesByReadingList(list: ReadingList): Promise<TrackedTitle[]> {
+  const rows = await db.trackedTitles.filter((row) => row.followed && row.readingList === list).toArray();
+  return rows.sort((a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0));
+}
+
+export async function setReadingList(mediaId: number, list: ReadingList | undefined): Promise<void> {
+  const existing = await db.trackedTitles.get(mediaId);
+  if (!existing) return;
+  await db.trackedTitles.put({ ...existing, readingList: list, updatedAt: Date.now() });
+}
+
+export async function autoUpdateReadingList(mediaId: number): Promise<void> {
+  const existing = await db.trackedTitles.get(mediaId);
+  if (!existing) return;
+  const progressRows = await db.progress.where('mediaId').equals(mediaId).toArray();
+  const latest = progressRows.sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  const inferred = readingListFromStatus(latest?.status, existing.readingList)
+    ?? readingListFromProgress(latest?.chapterNumberValue ?? -1, existing.totalChapters);
+  if (inferred && inferred !== existing.readingList) {
+    await db.trackedTitles.put({ ...existing, readingList: inferred, updatedAt: Date.now() });
+  }
 }
 
 export async function listHistory(limit = 80): Promise<HistoryEntry[]> {
@@ -170,6 +208,8 @@ export async function recordChapterRead(input: ChapterProgressInput): Promise<Pr
     : { ...current!, updatedAt: now };
   await db.progress.put(progress);
   await recordHistory({ ...input, chapterNumber, chapterTitle, readAt: now });
+  await autoUpdateReadingList(input.title.id);
+
   if (chapterReadHook) {
     try {
       await chapterReadHook({ ...input, chapterNumber, chapterTitle, readAt: now }, progress);
@@ -182,6 +222,22 @@ export async function recordChapterRead(input: ChapterProgressInput): Promise<Pr
 
 export async function recordReaderPage(input: ChapterProgressInput): Promise<void> {
   const now = input.readAt ?? Date.now();
+  const chapterNumber = input.chapterNumber?.trim() || undefined;
+  const isLastPage =
+    input.page !== undefined &&
+    input.totalPages !== undefined &&
+    input.totalPages > 0 &&
+    input.page >= input.totalPages - 1;
+
+  if (isLastPage && chapterValue(chapterNumber) >= 0) {
+    const readKey = chapterReadKey(input.title.id, input.sourceId, chapterNumber, input.chapterUrl);
+    const existingRead = await db.chapterReads.get(readKey);
+    if (!existingRead) {
+      await recordChapterRead({ ...input, chapterNumber, readAt: now });
+      return;
+    }
+  }
+
   await upsertTitleSnapshot(input.title, now);
   await recordHistory({ ...input, readAt: now });
 }
@@ -218,7 +274,8 @@ export async function markChapterUnread(mediaId: number, sourceId: string, chapt
   return progress;
 }
 
-async function recordHistory(input: ChapterProgressInput & { readAt: number }): Promise<void> {
+export async function recordHistory(input: ChapterProgressInput & { readAt: number }): Promise<void> {
+  await upsertTitleSnapshot(input.title, input.readAt);
   const chapterNumber = input.chapterNumber?.trim() || undefined;
   const chapterTitle = input.chapterTitle?.trim() || undefined;
   await db.history.put({
@@ -239,6 +296,7 @@ async function upsertTitleSnapshot(title: Title, updatedAt: number): Promise<Tra
   const row = snapshotTitle(title, {
     followed: existing?.followed ?? false,
     followedAt: existing?.followedAt,
+    readingList: existing?.readingList,
     updatedAt,
   });
   await db.trackedTitles.put(row);
@@ -247,7 +305,7 @@ async function upsertTitleSnapshot(title: Title, updatedAt: number): Promise<Tra
 
 function snapshotTitle(
   title: Title,
-  state: Pick<TrackedTitle, 'followed' | 'followedAt' | 'updatedAt'>,
+  state: Pick<TrackedTitle, 'followed' | 'followedAt' | 'updatedAt' | 'readingList'>,
 ): TrackedTitle {
   return {
     mediaId: title.id,
@@ -258,6 +316,7 @@ function snapshotTitle(
     totalChapters: title.chapters,
     followed: state.followed,
     followedAt: state.followedAt,
+    readingList: state.readingList,
     updatedAt: state.updatedAt,
   };
 }

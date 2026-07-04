@@ -1,4 +1,9 @@
-export { createAniListAdapter, configureAniList, type AniListAdapterOptions } from './anilist';
+export {
+  ANILIST_REDIRECT_URI,
+  createAniListAdapter,
+  configureAniList,
+  type AniListAdapterOptions,
+} from './anilist';
 export { createMalAdapter, configureMal, type MalAdapterOptions } from './mal';
 export {
   createMangaUpdatesAdapter,

@@ -31,6 +31,10 @@ export interface TrackerAdapter {
   push(media: Title, chapterNumber: number, status: ProgressStatus): Promise<void>;
   /** Pull remote progress and return the highest chapter number known remotely. */
   pull(media: Title): Promise<{ chapterNumber: number; status: ProgressStatus } | undefined>;
+  /** Add the title to the remote tracker list without changing existing remote progress. */
+  follow?(media: Title): Promise<void>;
+  /** Remove the title from the remote tracker list when supported. */
+  unfollow?(mediaId: number): Promise<void>;
 }
 
 /** Each tracker expects an integer chapter count; floor fractional values. */

@@ -1,5 +1,6 @@
 import { fetchBytes } from '../net';
 import { getCachedPage, cacheChapterPages } from './chapterCache';
+import { recordHealth } from '../scraper/sourceHealth';
 
 export interface ChapterLoadResult {
   blobUrls: string[];
@@ -11,7 +12,7 @@ export interface ChapterLoadOptions {
   onPageLoaded?: (index: number, blobUrl: string) => void;
   /** Media ID for caching. If provided, pages will be cached after loading. */
   mediaId?: number;
-  /** Source ID for caching. */
+  /** Source ID for caching and health tracking. */
   sourceId?: string;
   /** Chapter URL for caching. */
   chapterUrl?: string;
@@ -77,6 +78,15 @@ export async function loadChapterImages(
     cacheChapterPages(options.mediaId, options.sourceId, options.chapterUrl, blobUrls, urls).catch(() => {});
   }
 
+  if (options.sourceId && !signal?.aborted) {
+    await recordHealth(
+      options.sourceId,
+      failedPages.length === 0 ? 'success' : 'failure',
+      'page-load',
+      failedPages.length ? 'Some pages failed to load' : undefined,
+    );
+  }
+
   return { blobUrls, failedPages };
 }
 
@@ -95,6 +105,7 @@ export async function retryFailedPages(
   failedPages: number[],
   referer: string,
   signal?: AbortSignal,
+  sourceId?: string,
 ): Promise<ChapterLoadResult> {
   const blobUrls: string[] = Array(urls.length).fill('');
   const stillFailed: number[] = [];
@@ -111,6 +122,15 @@ export async function retryFailedPages(
     } catch {
       stillFailed.push(pageNum);
     }
+  }
+
+  if (sourceId && !signal?.aborted) {
+    await recordHealth(
+      sourceId,
+      stillFailed.length === 0 ? 'success' : 'failure',
+      'page-load',
+      stillFailed.length ? 'Retry still failed' : undefined,
+    );
   }
 
   return { blobUrls, failedPages: stillFailed };

@@ -1,0 +1,271 @@
+- generic [active] [ref=e1]:
+  - banner [ref=e2]:
+    - generic [ref=e4]:
+      - generic [ref=e7]:
+        - link "Landing Page" [ref=e8] [cursor=pointer]:
+          - /url: /
+          - img [ref=e12]
+        - link "ComicK" [ref=e13] [cursor=pointer]:
+          - /url: https://comickz.co.uk/home
+          - generic [ref=e14]: ComicK
+      - generic [ref=e17]:
+        - button "Search" [ref=e20] [cursor=pointer]:
+          - generic "Search" [ref=e21]:
+            - img [ref=e22]
+        - generic [ref=e23]:
+          - generic [ref=e24]: ⌘
+          - generic [ref=e25]: K
+      - generic [ref=e26]:
+        - button "Categories" [ref=e28] [cursor=pointer]:
+          - generic [ref=e29]: Categories
+          - img [ref=e30]
+        - link "Search" [ref=e32] [cursor=pointer]:
+          - /url: /search
+        - link "My List" [ref=e33] [cursor=pointer]:
+          - /url: /protected?return_to=https://comickz.co.uk
+        - generic [ref=e34]:
+          - link "Filter comics by gender" [ref=e36] [cursor=pointer]:
+            - /url: /filter#section=gender
+            - img [ref=e38]
+          - link [ref=e43] [cursor=pointer]:
+            - /url: /languages
+            - img [ref=e45]
+          - link [ref=e47] [cursor=pointer]:
+            - /url: /user/login
+            - img [ref=e49]
+          - img [ref=e53] [cursor=pointer]
+  - main [ref=e54]:
+    - generic [ref=e56]:
+      - generic [ref=e61]:
+        - text: "📢 NOTICE:"
+        - paragraph [ref=e62]:
+          - text: To make sure you can always access our site easily, please bookmark this page by pressing
+          - strong [ref=e63]: Ctrl + D
+          - generic [ref=e64]:
+            - text: (for
+            - img [ref=e65]
+            - text: )
+          - text: or
+          - strong [ref=e67]: ⌘ + D
+          - generic [ref=e68]:
+            - text: (for
+            - img [ref=e69]
+            - text: )
+          - text: . Due to recent changes in search engine results, our site might not always appear on Google.
+        - paragraph [ref=e71]:
+          - text: For account issues, please contact us via
+          - link "this form" [ref=e72] [cursor=pointer]:
+            - /url: https://forms.gle/By5AQZEQNCWQEd6R9
+          - text: or email us at
+          - link "support@comickz.co.uk" [ref=e73] [cursor=pointer]:
+            - /url: mailto:support@comickz.co.uk
+          - text: .
+      - generic [ref=e75]:
+        - heading "ComicK" [level=1] [ref=e76]
+        - paragraph [ref=e77]: ComicK is a renowned manga and manhwa platform, serving as a dynamic hub for discussions and content tracking
+        - link "Join ComicK Now!" [ref=e80] [cursor=pointer]:
+          - /url: https://comickz.co.uk/home
+          - button "Join ComicK Now!" [ref=e81]
+      - generic [ref=e83]:
+        - heading "ComicK – A Platform to Discover and Track Manga, Manhwa, and Manhua" [level=2] [ref=e85]
+        - blockquote [ref=e86]: ComicK is where you discover new series, organize your reading list, and track your progress across manga, manhwa, and manhua in a library built for a global community.
+        - generic [ref=e87]:
+          - paragraph [ref=e88]: "ComicK focuses on fast discovery and easy tracking: browse titles by genre, status, and popularity, view series details, save bookmarks, update your reading progress, and follow the series you care about. No matter where you read from, ComicK is designed to keep your reading journey clear, organized, and easy to return to."
+          - list [ref=e89]:
+            - listitem [ref=e90]: Explore manga/manhwa/manhua by genre and trends
+            - listitem [ref=e91]: Track progress and manage “Reading” and “Plan to Read” lists
+            - listitem [ref=e92]: View series info, ratings, and join community discussions
+        - paragraph [ref=e94]: ComicK
+      - generic [ref=e96]:
+        - heading "Why ComicK Became So Popular?" [level=2] [ref=e98]
+        - paragraph [ref=e100]: ComicK rose as one of the most talked-about platforms in the online comics community because it made reading and tracking incredibly frictionless. At its peak, it was reported to attract over 125 million visits per month, reflecting how widely it was used by readers worldwide.
+        - generic [ref=e101]:
+          - paragraph [ref=e102]: "Here are the key reasons behind its standout popularity:"
+          - list [ref=e103]:
+            - listitem [ref=e104]: "Exceptional UI/UX and speed: A modern, smooth interface, fast load times, and a reading experience optimized for convenience helped ComicK feel instantly “easy to use” compared to many alternatives."
+            - listitem [ref=e105]: "Massive and diverse library: ComicK offered tens of thousands of titles across manga, manhwa, and manhua, covering a wide range of genres and reader preferences."
+            - listitem [ref=e106]: "Smart discovery tools: Strong filtering and search features made it simple to find series by genre, status, popularity, and more, saving readers time and improving retention."
+            - listitem [ref=e107]: "Community + personalization: Readers could bookmark, mark chapters as read, track progress, and get updates for new releases, while discussion features encouraged engagement and sharing."
+            - listitem [ref=e108]: "Cleaner, less intrusive experience: Compared with many unofficial comic sites overloaded with aggressive ads, ComicK was often perceived as relatively cleaner and less disruptive, which significantly improved trust and long-session reading comfort."
+      - generic [ref=e110]:
+        - heading "A Message From the ComicK Team" [level=2] [ref=e112]
+        - generic [ref=e113]:
+          - paragraph [ref=e114]: We built ComicK around one principle. A great reading platform should feel effortless. A reader should not have to fight the interface, wait for pages to load, or lose track of where they left off. The story should remain the center of the experience, and everything around it should support smooth reading flow.
+          - list [ref=e115]:
+            - listitem [ref=e116]: "Speed and stability: We continuously work to keep fast loading chapters reliable, even during peak traffic. A large reading platform must handle real world usage without becoming slow or inconsistent."
+            - listitem [ref=e117]: "A clean manga reader experience: A clean reader is not a design trend. It directly affects comfort and immersion. We aim for distraction free reading with a layout that helps you read longer with less fatigue."
+            - listitem [ref=e118]: "Discovery that works in real life: Readers often search using partial titles, alternative names, or genre keywords. We design discovery around how people actually search for manga and comics, including search manga by tags and browse manga by genre."
+            - listitem [ref=e119]: "Continuity and organization: When you follow multiple series, the platform needs to keep your reading organized. ComicK is built to support continue reading workflows and reduce repeated searching across sessions."
+            - listitem [ref=e120]: "Feedback driven improvements: ComicK improves when readers report real issues. We treat support reports as product signals that help us fix broken chapters, missing pages, and metadata errors faster."
+      - generic [ref=e122]:
+        - heading "Quick Start" [level=2] [ref=e124]
+        - generic [ref=e125]:
+          - paragraph [ref=e126]: ComicK supports different reading styles, so the homepage offers multiple entry points. Each option is designed to move you from browsing to reading with minimal steps.
+          - paragraph [ref=e128]: Quick Start On ComicK
+          - generic [ref=e129]:
+            - paragraph [ref=e130]:
+              - text: "If you already know what you want to read:"
+              - text: Use the search bar to find manga by title, alternative titles, or keywords. This approach is best when you discovered a series elsewhere and want to start reading immediately. If the exact title does not appear, try fewer words, then refine using genres and tags.
+            - paragraph [ref=e131]:
+              - text: "If you want popular picks without guessing:"
+              - text: Open Most Recent Popular. This collection helps you discover popular manga and popular comics that readers are actively engaging with right now. It is a reliable starting point when you want something proven.
+            - paragraph [ref=e132]:
+              - text: "If you want new series that people are actively following:"
+              - text: Open Most Followed New Comics. This collection highlights new titles gaining followers quickly, making it ideal for readers who like to discover new releases early and follow stories while they build momentum.
+            - paragraph [ref=e133]:
+              - text: "If you enjoy stories connected to anime:"
+              - text: Open Adapted to Anime. Many readers watch an adaptation first, then continue the story in the original source. This collection helps you find titles with anime adaptations or announcements and start reading from the beginning.
+            - paragraph [ref=e134]:
+              - text: "If you want to keep up with ongoing chapters:"
+              - text: Open Updates (Hot and New). This feed is the fastest way to keep up with latest manga updates, new manga chapters, and latest chapter updates without checking each series page manually.
+      - generic [ref=e136]:
+        - heading "What Can You Do On ComicK Right Now?" [level=2] [ref=e138]
+        - paragraph [ref=e140]: What You Can Do on ComicK
+        - generic [ref=e141]:
+          - paragraph [ref=e142]: ComicK is designed as a complete reading workflow, not just a catalog. The platform supports the full cycle from discovery to reading to returning for updates.
+          - generic [ref=e143]:
+            - paragraph [ref=e144]:
+              - text: "Read and return without losing your place:"
+              - text: ComicK is built to help you continue reading manga and comics with less friction. Reading progress and reading history are essential for readers who jump between multiple titles. Instead of remembering chapter numbers, you can return and pick up where you left off more easily. Bookmarks and favorites help you build a personal library over time.
+            - paragraph [ref=e145]:
+              - text: "Stay organized with ongoing series:"
+              - text: Following a series is a simple action that changes your experience. When you follow manga series or follow comic series, you create a list of what you care about. That makes updates easier to track and reduces the effort of checking each title. Updates (Hot and New) supports this habit by surfacing recent changes so ongoing reading stays manageable.
+            - paragraph [ref=e146]:
+              - text: "Discover faster with browsing tools:"
+              - text: Discovery is not only about search. ComicK supports browse manga by genre and browse comics by genre, which helps when you do not have a specific title in mind. Tag based discovery lets you search manga by tags and themes like isekai, regression, villainess, murim, dungeon, tower, or cultivation.
+            - paragraph [ref=e147]:
+              - text: "Read across formats and trends:"
+              - text: Many readers enjoy manga alongside manhwa, webtoon style stories, and manhua. ComicK supports discovery for read manhwa online, read webtoon online, and read manhua online through genre and tag browsing, so you can find the storytelling style you want faster.
+      - generic [ref=e149]:
+        - heading "Most Recent Popular" [level=2] [ref=e151]
+        - generic [ref=e152]:
+          - paragraph [ref=e153]: Most Recent Popular is designed to reduce choice overload on a large library. When there are thousands of titles, readers need a reliable starting point that surfaces what is performing well right now.
+          - paragraph [ref=e154]: "What you will find here: You will typically see popular manga and popular comics with strong current engagement. This helps you find a title that many readers consider worth their time, especially if you are unsure what to read next."
+          - paragraph [ref=e155]: "How to use it effectively: Start with a genre you enjoy, open a few chapters, and if you like the series, follow it. Following turns a one time discovery into an ongoing reading relationship through updates."
+      - generic [ref=e157]:
+        - heading "Most Followed New Comics" [level=2] [ref=e159]
+        - generic [ref=e160]:
+          - paragraph [ref=e161]: Most Followed New Comics highlights new series that are gaining followers fast. It is designed for readers who enjoy discovering new titles early, before they become widely known.
+          - paragraph [ref=e162]: "Why this collection matters: Follower growth is a strong signal that a new title is resonating. This section helps you discover new comics with rising momentum, so you can follow along as the story develops."
+          - paragraph [ref=e163]: "Common themes you may see here: Many of the most followed new titles align with high demand themes like romance fantasy, villainess, regression, system, dungeon, and tower stories, especially within modern manhwa and webtoon audiences."
+      - generic [ref=e165]:
+        - heading "Adapted to Anime" [level=2] [ref=e167]
+        - generic [ref=e168]:
+          - paragraph [ref=e169]: Adapted to Anime connects reading with how many fans discover stories today. Adaptations introduce titles to new audiences, but the source material often goes further.
+          - paragraph [ref=e170]: "What this collection helps you do: It helps you find series with anime adaptations or announcements, start reading from the beginning, and continue beyond what has been animated. This is useful when you want to catch up, compare story differences, or explore arcs that have not appeared on screen yet."
+      - generic [ref=e172]:
+        - heading "Updates (Hot and New)" [level=2] [ref=e174]
+        - generic [ref=e175]:
+          - paragraph [ref=e176]: Updates (Hot and New) is built for ongoing readers who want efficiency. It reduces the workload of following multiple series by putting recent changes into one feed.
+          - paragraph [ref=e177]: "Why readers rely on this feed: It lets you see latest manga updates and new manga chapters without checking individual series pages. It also surfaces both hot updates and newly updated titles, helping you keep pace with ongoing releases."
+          - paragraph [ref=e178]: "Best practice for ongoing reading: Follow the series you care about, then use Updates (Hot and New) as your routine feed. This is the most efficient way to keep your reading organized if you track many titles at once."
+      - generic [ref=e180]:
+        - heading "Search on ComicK" [level=2] [ref=e182]
+        - generic [ref=e183]:
+          - paragraph [ref=e184]: Search is the most direct tool on any online manga reader, and we build ComicK search to work even when your information is incomplete.
+          - paragraph [ref=e185]: "What search supports: You can find manga by title and alternative titles, which helps when a series has different names. You can search manga by tags and themes, which is ideal when you remember a concept but not the exact title. You can also search by genre and filter for completed manga or ongoing manga depending on how you prefer to read."
+          - paragraph [ref=e186]: "Search tips from the ComicK team: If an exact title does not appear, try fewer words or an alternate name. If you only remember the theme, search using tags like isekai, regression, villainess, murim, dungeon, tower, or cultivation. If you want a binge session, prioritize completed series."
+      - generic [ref=e188]:
+        - heading "Featured Genres" [level=2] [ref=e190]
+        - generic [ref=e191]:
+          - paragraph [ref=e192]: Featured Genres is for readers who discover stories by vibe and theme, not just by title. These are among the most searched and fastest growing categories across manga, manhwa, webtoon, and manhua audiences.
+          - generic [ref=e193]:
+            - paragraph [ref=e194]: "Action and Adventure:"
+            - paragraph [ref=e196]: Action and Adventure Manga
+            - paragraph [ref=e197]: Action manga and adventure manga are ideal for readers who want momentum, battles, and progression arcs. Many of these titles match shonen energy, while others lean into deeper themes aligned with seinen tastes.
+            - paragraph [ref=e198]:
+              - text: "Romance and Romantic Comedy:"
+              - text: Romance manga and romantic comedy manga remain among the most searched genres. Readers often look for specific setups like school romance manga or office romance manhwa, which emphasize character chemistry and emotional pacing.
+            - paragraph [ref=e199]:
+              - text: "Fantasy and Isekai:"
+              - text: Fantasy manga is consistently popular, and isekai manga and isekai manhwa remain hot because they combine world building with a strong narrative hook. Related themes like reincarnation manga and reincarnation manhwa also remain widely searched.
+            - paragraph [ref=e200]:
+              - text: "Regression, System, Dungeon, Tower:"
+              - text: These are high demand tags in modern manhwa and webtoon style storytelling. Readers searching regression manhwa, system manhwa, dungeon manhwa, tower manhwa, leveling up manhwa, and hunter manhwa are usually looking for clear progression and fast payoff arcs.
+            - paragraph [ref=e201]:
+              - text: "Villainess and Romance Fantasy:"
+              - text: Villainess manga and villainess manhwa have become major trends, often tied to romance fantasy story structures. If you enjoy character redemption arcs, political intrigue, and relationship driven plotlines, this category is a strong fit.
+            - paragraph [ref=e202]:
+              - text: "Murim, Martial Arts, Cultivation:"
+              - text: Murim manhwa, martial arts manhua, and cultivation manhua remain popular for readers who want historical combat settings, training arcs, and power progression with classic martial storytelling.
+            - paragraph [ref=e203]:
+              - text: "Thriller, Horror, Mystery:"
+              - text: Thriller manga, horror manga, and mystery manga are ideal when you want suspense, psychological tension, and darker atmosphere.
+            - paragraph [ref=e204]:
+              - text: "Slice of Life and Drama:"
+              - text: Slice of life manga, drama manga, and comedy manga support calmer pacing and character development, often focusing on everyday moments and emotional realism.
+      - generic [ref=e206]:
+        - heading "Clean Reader and Performance" [level=2] [ref=e208]
+        - generic [ref=e209]:
+          - paragraph [ref=e210]: A clean manga reader is not cosmetic. It directly affects how long you can read comfortably.
+          - generic [ref=e211]:
+            - paragraph [ref=e212]:
+              - text: "Distraction free reading:"
+              - text: We prioritize a layout that keeps focus on the story so the reading experience stays immersive.
+            - paragraph [ref=e213]:
+              - text: "Fast loading chapters:"
+              - text: Performance improvements are continuous because speed matters for every reader and every device.
+            - paragraph [ref=e214]: "Mobile friendly and desktop optimized:"
+            - paragraph [ref=e216]: Clean Reader and Performance
+            - paragraph [ref=e217]: ComicK is designed to remain consistent across mobile and desktop, so your reading flow does not break when you change devices.
+      - generic [ref=e219]:
+        - heading "Support, Feedback, and Trust" [level=2] [ref=e221]
+        - generic [ref=e222]:
+          - paragraph [ref=e223]: ComicK improves through real feedback. If a chapter is not loading, pages are missing, or series information needs correction, please contact our team so we can review it.
+          - paragraph [ref=e224]:
+            - text: "Support email:"
+            - link "support@comickz.co.uk" [ref=e225] [cursor=pointer]:
+              - /url: mailto:support@comickz.co.uk
+          - paragraph [ref=e226]: "What to include in a report: Please include the series title and chapter number, the page URL, your device and browser, a brief description of what happened and when, and screenshots if available."
+          - paragraph [ref=e227]:
+            - text: "Copyright and rights holder requests: ComicK respects intellectual property rights. Rights holders and authorized representatives can contact"
+            - link "support@comickz.co.uk" [ref=e228] [cursor=pointer]:
+              - /url: mailto:support@comickz.co.uk
+            - text: with proof of authorization and direct URLs to the relevant material.
+      - generic [ref=e230]:
+        - heading "FAQs – Frequently Asked Questions About ComicK" [level=2] [ref=e232]
+        - generic [ref=e235]:
+          - generic [ref=e236]:
+            - term [ref=e237]: 1. What is ComicK?
+            - definition [ref=e238]: ComicK is an online manga reader and comics reading site where you can read manga online, discover titles through curated sections, and stay organized with following and reading progress support.
+          - generic [ref=e239]:
+            - term [ref=e240]: 2. Where should I start if I want popular picks?
+            - definition [ref=e241]: Use Most Recent Popular to discover popular manga and popular comics that readers are engaging with right now.
+          - generic [ref=e242]:
+            - term [ref=e243]: 3. How do I continue reading where I left off?
+            - definition [ref=e244]: ComicK supports reading progress and reading history so returning readers can continue reading with less friction across sessions and devices.
+          - generic [ref=e245]:
+            - term [ref=e246]: 4. Why is a chapter not loading?
+            - definition [ref=e247]: This may be caused by network conditions, browser settings, cached data, or temporary platform errors. Refresh the page, clear cache, switch browsers, or try again later. If it persists, email support with the chapter URL.
+          - generic [ref=e248]:
+            - term [ref=e249]: 5. How can rights holders contact ComicK?
+            - definition [ref=e250]: Rights holders and authorized representatives can contact support@comickz.co.uk with proof of authorization and direct URLs to the material they want reviewed or removed.
+  - contentinfo [ref=e251]:
+    - generic [ref=e253]:
+      - generic [ref=e254]:
+        - link "FAQ" [ref=e255] [cursor=pointer]:
+          - /url: https://comickz.co.uk/faq
+        - link "Status Page" [ref=e256] [cursor=pointer]:
+          - /url: https://comicklive.statuspage.io/
+        - link "Roadmap" [ref=e257] [cursor=pointer]:
+          - /url: https://www.notion.so/24072150dd3f809f94b6d9b108d84505
+        - link "Credits" [ref=e258] [cursor=pointer]:
+          - /url: https://comickz.co.uk/credits
+        - link "Introduction" [ref=e259] [cursor=pointer]:
+          - /url: https://comickz.co.uk/introduction
+        - link "Privacy Policy" [ref=e260] [cursor=pointer]:
+          - /url: https://comickz.co.uk/privacy-policy
+        - link "Terms Of Use" [ref=e261] [cursor=pointer]:
+          - /url: https://comickz.co.uk/terms-of-use
+        - link "Contact Us" [ref=e262] [cursor=pointer]:
+          - /url: https://comickz.co.uk/contact-us
+      - generic [ref=e263]:
+        - link "Discord" [ref=e264] [cursor=pointer]:
+          - /url: https://discord.com/invite/TndkBtSNWs
+          - img [ref=e265]
+        - link "Reddit" [ref=e268] [cursor=pointer]:
+          - /url: https://www.reddit.com/r/ComicPeak/
+          - img [ref=e269]
+        - link "Facebook" [ref=e275] [cursor=pointer]:
+          - /url: https://www.facebook.com/comick1
+          - img [ref=e276]

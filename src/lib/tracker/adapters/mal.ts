@@ -59,9 +59,9 @@ async function connect(): Promise<TrackerConnection> {
   const flow = startOAuth({
     authorizeUrl: AUTH_URL,
     clientId: options.clientId,
+    responseType: 'code',
     title: 'Connect MyAnimeList',
     extraParams: {
-      response_type: 'code',
       code_challenge: challenge,
       code_challenge_method: 'S256',
       state,

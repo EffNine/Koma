@@ -34,10 +34,15 @@ export default {
 
     const referer = url.searchParams.get('referer') || `${targetUrl.origin}/`;
     const extraHeaders = parseHeaders(url.searchParams.get('headers'));
+    const method = url.searchParams.get('method') || 'GET';
+    const bodyB64 = url.searchParams.get('body_b64');
+    const body = bodyB64 ? base64ToBytes(bodyB64) : undefined;
 
     try {
       const upstream = await fetch(targetUrl.toString(), {
+        method,
         headers: { 'User-Agent': UA, Referer: referer, Accept: '*/*', ...extraHeaders },
+        body,
         redirect: 'follow',
       });
       const buf = await upstream.arrayBuffer();
@@ -92,6 +97,13 @@ function bytesToBase64(bytes) {
     out += String.fromCharCode(...bytes.subarray(i, i + chunk));
   }
   return btoa(out);
+}
+
+function base64ToBytes(str) {
+  const bin = atob(str);
+  const bytes = new Uint8Array(bin.length);
+  for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+  return bytes;
 }
 
 function json(body, status = 200) {

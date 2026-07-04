@@ -7,6 +7,7 @@ import type { ChapterRead, HistoryEntry, ProgressEntry, TrackedTitle } from './t
 import type { TrackerConnection } from './tracker/adapters/base';
 import type { TitleChapterSnapshot } from './media/chapterSnapshots';
 import type { ChapterCacheEntry, ChapterCachePage } from './reader/chapterCache';
+import type { SourceHealth } from './scraper/sourceHealth';
 
 interface CacheEntry {
   key: string;
@@ -28,6 +29,7 @@ class KomaDB extends Dexie {
   titleChapterSnapshots!: Table<TitleChapterSnapshot, string>;
   chapterCache!: Table<ChapterCacheEntry, string>;
   chapterCachePages!: Table<ChapterCachePage, string>;
+  sourceHealth!: Table<SourceHealth, string>;
   constructor() {
     super('koma');
     this.version(1).stores({ catalog: 'key, ts' });
@@ -111,6 +113,22 @@ class KomaDB extends Dexie {
       titleChapterSnapshots: 'key, mediaId, checkedAt',
       chapterCache: 'key, mediaId, sourceId, createdAt',
       chapterCachePages: 'key, chapterKey, pageIndex',
+    });
+    this.version(11).stores({
+      catalog: 'key, ts',
+      sources: 'id, enabled, preset, addedAt, checkedAt, status, priority',
+      readerState: 'key, mediaId, sourceId, updatedAt',
+      readerSettings: 'key',
+      titlePreferences: 'mediaId, updatedAt',
+      trackedTitles: 'mediaId, followed, followedAt, updatedAt',
+      chapterReads: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, readAt',
+      progress: 'key, mediaId, sourceId, [mediaId+sourceId], chapterNumberValue, updatedAt, status',
+      history: 'id, mediaId, sourceId, readAt',
+      trackerConnections: 'id, enabled, updatedAt',
+      titleChapterSnapshots: 'key, mediaId, checkedAt',
+      chapterCache: 'key, mediaId, sourceId, createdAt',
+      chapterCachePages: 'key, chapterKey, pageIndex',
+      sourceHealth: 'sourceId, updatedAt',
     });
   }
 }

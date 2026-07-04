@@ -1,4 +1,11 @@
-import { deriveDirection } from '../src/lib/reader/state.ts';
+import 'fake-indexeddb/auto';
+import { db } from '../src/lib/db.ts';
+import {
+  deriveDirection,
+  loadReaderState,
+  saveReaderState,
+  loadLastReaderStateForMedia,
+} from '../src/lib/reader/state.ts';
 import {
   preferredGroupForChapter,
   selectAdjacentChapter,
@@ -17,6 +24,19 @@ function assert(cond: boolean, msg: string) {
     console.log('ok: ' + msg);
   }
 }
+
+async function resetDb() {
+  db.close();
+  await new Promise<void>((resolve, reject) => {
+    const req = indexedDB.deleteDatabase('koma');
+    req.onsuccess = () => resolve();
+    req.onerror = () => reject(req.error);
+    req.onblocked = () => reject(new Error('deleteDatabase blocked'));
+  });
+  await db.open();
+}
+
+await resetDb();
 
 assert(deriveDirection('JP') === 'rtl', 'JP defaults to rtl manga paging');
 assert(deriveDirection('KR') === 'vertical', 'KR uses vertical webtoon scroll');
@@ -118,12 +138,70 @@ assert(
   'categorizeFailure passes through unknown errors',
 );
 
+// Reader state persistence
+await saveReaderState({
+  mediaId: 42,
+  sourceId: 'src-a',
+  chapterUrl: 'https://example.com/ch/1',
+  page: 7,
+  direction: 'ltr',
+  imageFit: 'original',
+});
+const loaded = await loadReaderState(42, 'src-a', 'https://example.com/ch/1');
+assert(loaded?.page === 7, 'loadReaderState restores saved page');
+assert(loaded?.direction === 'ltr', 'loadReaderState restores saved direction');
+assert(loaded?.imageFit === 'original', 'loadReaderState restores saved image fit');
+
+// Updating the same key overwrites state
+await saveReaderState({
+  mediaId: 42,
+  sourceId: 'src-a',
+  chapterUrl: 'https://example.com/ch/1',
+  page: 12,
+  direction: 'vertical',
+  imageFit: 'screen',
+});
+const updated = await loadReaderState(42, 'src-a', 'https://example.com/ch/1');
+assert(updated?.page === 12, 'saveReaderState overwrites page');
+assert(updated?.direction === 'vertical', 'saveReaderState overwrites direction');
+assert(updated?.imageFit === 'screen', 'saveReaderState overwrites image fit');
+
+// Last state for media picks the most recently updated
+await saveReaderState({
+  mediaId: 99,
+  sourceId: 'src-old',
+  chapterUrl: 'https://example.com/ch/old',
+  page: 1,
+  direction: 'rtl',
+});
+await new Promise((resolve) => setTimeout(resolve, 30));
+await saveReaderState({
+  mediaId: 99,
+  sourceId: 'src-new',
+  chapterUrl: 'https://example.com/ch/new',
+  page: 5,
+  direction: 'ltr',
+});
+const last = await loadLastReaderStateForMedia(99);
+assert(last?.sourceId === 'src-new', 'loadLastReaderStateForMedia returns the most recent source');
+assert(last?.page === 5, 'loadLastReaderStateForMedia returns the most recent page');
+
+await resetDb();
+
 if (failures) {
   console.error(`\n${failures} reader check(s) failed`);
   process.exit(1);
 }
 
 console.log('\nall reader checks passed');
+
+db.close();
+await new Promise<void>((resolve, reject) => {
+  const req = indexedDB.deleteDatabase('koma');
+  req.onsuccess = () => resolve();
+  req.onerror = () => reject(req.error);
+  req.onblocked = () => reject(new Error('deleteDatabase blocked'));
+});
 
 function chapter(number: string, group: string): ScrapedChapter {
   return {

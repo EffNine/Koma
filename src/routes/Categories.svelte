@@ -2,6 +2,7 @@
   import { browseFiltered, SORTS, GENRE_COLLECTION } from '../lib/catalog/anilist';
   import type { Country, Title } from '../lib/catalog/types';
   import TitleCard from '../lib/components/TitleCard.svelte';
+  import EmptyState from '../lib/components/EmptyState.svelte';
 
   const countryOptions: { label: string; value: Country }[] = [
     { label: 'All', value: null },
@@ -240,14 +241,14 @@
         {#each Array(12) as _, i (i)}<div class="card skel"></div>{/each}
       </div>
     {:else if hasSearched && titles.length === 0}
-      <div class="card empty">No results match your filters. Try adjusting them.</div>
+      <EmptyState id="browse" />
     {:else if hasSearched}
       <div class="result-count">{titles.length} result{titles.length === 1 ? '' : 's'}</div>
       <div class="grid">
         {#each titles as t (t.id)}<TitleCard title={t} />{/each}
       </div>
     {:else}
-      <div class="card empty">Select filters and click "Apply Filters" to browse.</div>
+      <EmptyState id="generic" context="Select filters and click Apply Filters to browse." />
     {/if}
   </section>
 </div>
@@ -258,30 +259,31 @@
 
   /* Filter panel */
   .filter-panel { padding: 0; overflow: hidden; }
-  .filter-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 12px 16px; border-bottom: 1px solid var(--border); }
-  .filter-toggle { font-size: 14px; font-weight: 600; gap: 8px; }
-  .filter-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #fff; font-size: 11px; font-weight: 600; }
-  .filter-body { padding: 16px; display: flex; flex-direction: column; gap: 16px; }
+  .filter-panel-head { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; border-bottom: 1px solid var(--border-soft); background: color-mix(in srgb, var(--elevated) 42%, transparent); }
+  .filter-toggle { font-size: 14px; font-weight: 720; gap: 8px; }
+  .filter-badge { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 6px; border-radius: 10px; background: var(--accent); color: #17110a; font-size: 11px; font-weight: 760; }
+  .filter-body { padding: 14px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 16px; }
   .filter-group { display: flex; flex-direction: column; gap: 8px; }
-  .filter-label { font-size: 13px; font-weight: 600; color: var(--muted); text-transform: uppercase; letter-spacing: 0.4px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .filter-group:has(.genre-grid) { grid-column: 1 / -1; }
+  .filter-label { font-size: 12px; font-weight: 760; color: var(--muted-2); text-transform: uppercase; letter-spacing: 0.06em; display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
   .genre-hint { font-size: 11px; font-weight: 400; text-transform: none; letter-spacing: 0; color: var(--muted-2); }
   .filter-chips { display: flex; gap: 6px; flex-wrap: wrap; }
-  .chip-btn { padding: 6px 14px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .chip-btn { min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
   .chip-btn:hover { border-color: var(--accent); color: var(--text); }
-  .chip-btn.active { background: var(--accent); border-color: transparent; color: #fff; }
+  .chip-btn.active { background: var(--accent); border-color: transparent; color: #17110a; font-weight: 700; }
   .filter-range { display: flex; align-items: center; gap: 8px; }
-  .range-input { width: 100px; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
+  .range-input { width: 100px; min-height: 34px; padding: 0 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
   .range-input:focus { border-color: var(--accent); outline: none; }
   .range-sep { color: var(--muted-2); font-size: 14px; }
 
   /* Genre tags — ComicK-style */
   .genre-grid { display: flex; gap: 6px; flex-wrap: wrap; }
-  .genre-tag { display: inline-flex; align-items: center; gap: 5px; padding: 6px 12px; border-radius: 20px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
+  .genre-tag { display: inline-flex; align-items: center; gap: 5px; min-height: 32px; padding: 0 12px; border-radius: 999px; border: 1px solid var(--border); background: var(--surface); color: var(--muted); font-size: 13px; cursor: pointer; transition: all .15s; }
   .genre-tag:hover { border-color: var(--accent); }
   .genre-tag.selected { background: color-mix(in srgb, var(--accent) 20%, transparent); border-color: var(--accent); color: var(--text); }
   .genre-tag.excluded { background: color-mix(in srgb, var(--danger) 15%, transparent); border-color: color-mix(in srgb, var(--danger) 50%, transparent); color: var(--danger); text-decoration: line-through; }
   .genre-mark { font-size: 11px; font-weight: 700; }
-  .apply-btn { align-self: flex-start; margin-top: 4px; }
+  .apply-btn { align-self: flex-start; justify-self: flex-start; width: fit-content; margin-top: 4px; grid-column: 1 / -1; }
 
   /* Results */
   .results-section { display: flex; flex-direction: column; gap: var(--gap); }
@@ -289,4 +291,7 @@
   .skel { aspect-ratio: 3/4; }
   .empty { text-align: center; color: var(--muted); padding: 40px; }
   .err { color: var(--danger); display: flex; align-items: center; gap: 12px; }
+  @media (max-width: 760px) {
+    .filter-body { grid-template-columns: 1fr; }
+  }
 </style>

@@ -20,6 +20,8 @@ pub async fn fetch_raw(
     referer: Option<String>,
     headers: Option<HashMap<String, String>>,
     cf_cookies: Option<String>,
+    method: Option<String>,
+    body_b64: Option<String>,
 ) -> Result<FetchResp, String> {
     let client = reqwest::Client::builder()
         .redirect(reqwest::redirect::Policy::limited(10))
@@ -37,16 +39,38 @@ pub async fn fetch_raw(
         .map(|u| format!("{}://{}", u.scheme(), u.host_str().unwrap_or("")))
         .unwrap_or_default();
 
-    let mut req = client.get(&url)
-        .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
-        .header("Accept-Language", "en-US,en;q=0.9")
-        .header("Accept-Encoding", "gzip, deflate, br")
-        .header("DNT", "1")
-        .header("Upgrade-Insecure-Requests", "1")
-        .header("Sec-Fetch-Dest", "document")
-        .header("Sec-Fetch-Mode", "navigate")
-        .header("Sec-Fetch-Site", "none")
-        .header("Sec-Fetch-User", "?1");
+    let method_str = method.unwrap_or_else(|| "GET".to_string());
+    let is_post = method_str.eq_ignore_ascii_case("POST");
+
+    let mut req = client
+        .request(
+            reqwest::Method::from_bytes(method_str.as_bytes())
+                .map_err(|e| e.to_string())?,
+            &url,
+        );
+
+    if is_post {
+        req = req
+            .header("Accept", "application/json")
+            .header("Content-Type", "application/json")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Accept-Encoding", "gzip, deflate, br")
+            .header("DNT", "1")
+            .header("Sec-Fetch-Dest", "empty")
+            .header("Sec-Fetch-Mode", "cors")
+            .header("Sec-Fetch-Site", "cross-site");
+    } else {
+        req = req
+            .header("Accept", "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8")
+            .header("Accept-Language", "en-US,en;q=0.9")
+            .header("Accept-Encoding", "gzip, deflate, br")
+            .header("DNT", "1")
+            .header("Upgrade-Insecure-Requests", "1")
+            .header("Sec-Fetch-Dest", "document")
+            .header("Sec-Fetch-Mode", "navigate")
+            .header("Sec-Fetch-Site", "none")
+            .header("Sec-Fetch-User", "?1");
+    }
 
     // Set Referer: use provided value, else fall back to origin of the URL
     req = req.header("Referer", referer.unwrap_or(default_referer));
@@ -59,10 +83,24 @@ pub async fn fetch_raw(
     }
 
     // Merge caller-supplied headers on top (they win over defaults)
+    let mut has_content_type = false;
     if let Some(extra_headers) = headers {
         for (key, value) in extra_headers {
+            if key.eq_ignore_ascii_case("content-type") {
+                has_content_type = true;
+            }
             req = req.header(&key, &value);
         }
+    }
+
+    if let Some(body) = body_b64 {
+        let decoded = base64::engine::general_purpose::STANDARD
+            .decode(body)
+            .map_err(|e| e.to_string())?;
+        if !has_content_type {
+            req = req.header("Content-Type", "application/octet-stream");
+        }
+        req = req.body(decoded);
     }
 
     let response = req.send().await.map_err(|e| e.to_string())?;

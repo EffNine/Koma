@@ -1,4 +1,5 @@
 import { db } from '../db';
+import type { ImageFit } from './settings';
 
 export type ReaderDirection = 'rtl' | 'ltr' | 'vertical';
 
@@ -7,8 +8,10 @@ export interface ReaderState {
   mediaId: number;
   sourceId: string;
   chapterUrl: string;
+  seriesUrl?: string;
   page: number;
   direction: ReaderDirection;
+  imageFit?: ImageFit;
   updatedAt: number;
 }
 
@@ -40,4 +43,9 @@ export async function saveReaderState(
   };
   await db.readerState.put(state);
   return state;
+}
+
+/** Load the most recent reader state for a title, if any. */
+export async function loadLastReaderStateForMedia(mediaId: number): Promise<ReaderState | undefined> {
+  return db.readerState.where('mediaId').equals(mediaId).reverse().sortBy('updatedAt').then((rows) => rows[0]);
 }

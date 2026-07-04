@@ -1,23 +1,31 @@
-/* ponytail: one palette, one spacing scale, one accent. Claude Code dark mode inspired. */
+/* ponytail: one palette, one spacing scale, one accent. Reading-first dark mode. */
 :root {
-  --bg: #1a1a1a;
-  --surface: #222222;
-  --elevated: #2a2a2a;
-  --border: #333333;
-  --text: #e8e8ec;
-  --muted: #9ca3af;
-  --muted-2: #6b7280;
-  --accent: #D97706;
-  --accent-press: #B45309;
-  --accent-glow: rgba(217, 119, 6, 0.15);
-  --danger: #ef4444;
-  --radius: 10px;
-  --radius-sm: 7px;
+  --bg: #101112;
+  --surface: #17191b;
+  --elevated: #202327;
+  --panel: #25292e;
+  --border: #31363c;
+  --border-soft: rgba(255, 255, 255, 0.075);
+  --text: #f0eee7;
+  --muted: #a6adb5;
+  --muted-2: #707982;
+  --accent: #d99a3a;
+  --accent-press: #b87623;
+  --accent-soft: rgba(217, 154, 58, 0.13);
+  --accent-glow: rgba(217, 154, 58, 0.2);
+  --ok: #2fbfa5;
+  --ok-soft: rgba(47, 191, 165, 0.14);
+  --warning: #e1b44f;
+  --danger: #e9687a;
+  --danger-soft: rgba(233, 104, 122, 0.14);
+  --radius: 8px;
+  --radius-sm: 6px;
   --gap: 16px;
   --gap-sm: 8px;
   --gap-lg: 28px;
-  --shadow: 0 6px 24px rgba(0, 0, 0, 0.45);
-  --font: ui-rounded, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
+  --control-h: 38px;
+  --shadow: 0 18px 50px rgba(0, 0, 0, 0.36);
+  --font: Inter, ui-sans-serif, -apple-system, BlinkMacSystemFont, "Segoe UI", system-ui, sans-serif;
   color-scheme: dark;
 }
 
@@ -26,7 +34,9 @@
 html, body, #app { height: 100%; margin: 0; }
 
 body {
-  background: var(--bg);
+  background:
+    radial-gradient(circle at 50% -10%, rgba(217, 154, 58, 0.08), transparent 34rem),
+    var(--bg);
   color: var(--text);
   font-family: var(--font);
   font-size: 15px;
@@ -36,9 +46,11 @@ body {
 }
 
 a { color: inherit; text-decoration: none; }
-button { font-family: inherit; }
+button, input, select { font-family: inherit; }
+button, select { cursor: pointer; }
+button:disabled, .btn[disabled] { cursor: not-allowed; opacity: .52; }
 
-:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; border-radius: 4px; }
+:focus-visible { outline: 2px solid color-mix(in srgb, var(--accent) 82%, white); outline-offset: 2px; border-radius: 4px; }
 
 ::-webkit-scrollbar { width: 10px; height: 10px; }
 ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 6px; }
@@ -47,15 +59,19 @@ button { font-family: inherit; }
 .shell { display: flex; flex-direction: column; min-height: 100%; }
 .topbar {
   display: flex; align-items: center; gap: var(--gap);
-  padding: 10px 18px; border-bottom: 1px solid var(--border);
-  background: color-mix(in srgb, var(--bg) 80%, transparent);
-  backdrop-filter: blur(8px); position: sticky; top: 0; z-index: 10;
+  min-height: 58px; padding: 10px 18px; border-bottom: 1px solid var(--border-soft);
+  background: color-mix(in srgb, var(--bg) 87%, transparent);
+  backdrop-filter: blur(12px); position: sticky; top: 0; z-index: 10;
+  transition: min-height .18s ease, background .18s ease;
 }
-.brand { font-weight: 700; letter-spacing: -0.3px; font-size: 18px; display: flex; align-items: center; gap: 0; }
+.topbar.reader-mode {
+  display: none;
+}
+.brand { font-weight: 760; letter-spacing: 0; font-size: 18px; display: flex; align-items: center; gap: 0; }
 .brand .logo-k {
   display: inline;
   font-family: inherit;
-  font-weight: 700;
+  font-weight: 800;
   font-size: 18px;
   color: var(--accent);
   background: none;
@@ -66,34 +82,62 @@ button { font-family: inherit; }
 }
 .nav { display: flex; gap: 2px; }
 .nav a {
-  padding: 7px 12px; border-radius: var(--radius-sm); color: var(--muted);
-  font-size: 14px; font-weight: 500; cursor: pointer;
+  min-height: 34px; display: inline-flex; align-items: center;
+  padding: 0 12px; border-radius: var(--radius-sm); color: var(--muted);
+  font-size: 13px; font-weight: 620; cursor: pointer;
 }
 .nav a:hover { color: var(--text); background: var(--surface); }
-.nav a.active { color: var(--text); background: var(--elevated); }
+.nav a.active { color: var(--text); background: var(--elevated); box-shadow: inset 0 0 0 1px var(--border-soft); }
 
 .top-search { margin-left: auto; }
-.top-search-input { width: 140px; padding: 6px 10px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; transition: width .2s, border-color .2s; }
+.top-search-input {
+  width: 180px; height: 34px; padding: 0 12px; border-radius: var(--radius-sm);
+  border: 1px solid var(--border); background: var(--surface); color: var(--text);
+  font-size: 13px; transition: width .2s, border-color .2s, background .2s;
+}
+.top-search-input::placeholder { color: var(--muted-2); }
 .top-search-input:focus { width: 200px; border-color: var(--accent); outline: none; }
 
 .view { padding: var(--gap-lg) clamp(16px, 4vw, 48px); max-width: 1280px; margin: 0 auto; width: 100%; flex: 1; }
-.h1 { font-size: 22px; font-weight: 650; margin: 0 0 4px; }
+.view.reader-view { max-width: none; padding: 18px clamp(10px, 2.5vw, 28px) 32px; }
+.h1 { font-size: 24px; font-weight: 720; margin: 0 0 4px; letter-spacing: 0; }
+.h2 { font-size: 18px; font-weight: 720; margin: 0 0 4px; letter-spacing: 0; }
 .sub { color: var(--muted); font-size: 14px; margin: 0 0 var(--gap-lg); }
 
 .card {
-  background: var(--surface); border: 1px solid var(--border);
+  background: var(--surface); border: 1px solid var(--border-soft);
   border-radius: var(--radius); padding: 16px;
 }
 .grid { display: grid; gap: var(--gap); grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); }
 
 .btn {
   display: inline-flex; align-items: center; gap: 7px;
-  padding: 8px 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
-  background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px;
+  min-height: var(--control-h); padding: 0 14px; border-radius: var(--radius-sm); border: 1px solid var(--border);
+  background: var(--surface); color: var(--text); cursor: pointer; font-size: 14px; font-weight: 620;
+  transition: background .15s ease, border-color .15s ease, transform .15s ease, color .15s ease;
 }
-.btn:hover { background: var(--elevated); }
-.btn-primary { background: var(--accent); border-color: transparent; color: #fff; }
+.btn:hover { background: var(--elevated); border-color: color-mix(in srgb, var(--border) 55%, var(--accent)); }
+.btn-primary { background: var(--accent); border-color: transparent; color: #17110a; }
 .btn-primary:hover { background: var(--accent-press); }
+.btn-danger { background: var(--danger); border-color: transparent; color: #fff; }
+.btn-danger:hover { background: color-mix(in srgb, var(--danger) 86%, #fff); }
+
+.msg {
+  display: flex; align-items: center; justify-content: space-between; gap: 10px;
+  font-size: 13px; border-radius: var(--radius-sm); padding: 9px 11px;
+  background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent);
+}
+.msg.ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 30%, transparent); }
+.msg.warn { background: color-mix(in srgb, var(--warning) 12%, transparent); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
+.msg.errbox { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger); }
+
+.badge {
+  display: inline-flex; align-items: center; min-height: 22px; padding: 0 8px;
+  border-radius: 999px; border: 1px solid var(--border-soft); color: var(--muted);
+  background: var(--elevated); font-size: 12px; font-weight: 650;
+}
+.badge-accent { color: color-mix(in srgb, var(--accent) 82%, white); background: var(--accent-soft); border-color: color-mix(in srgb, var(--accent) 32%, transparent); }
+.badge-ok { color: color-mix(in srgb, var(--ok) 76%, white); background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 35%, transparent); }
 
 @media (max-width: 760px) {
   .topbar {
@@ -103,7 +147,7 @@ button { font-family: inherit; }
   }
   .brand { flex-shrink: 0; }
   .top-search { margin-left: auto; }
-  .top-search-input { width: min(42vw, 170px); }
+  .top-search-input { width: min(44vw, 190px); }
   .top-search-input:focus { width: min(50vw, 200px); }
   .nav {
     order: 3;
@@ -112,4 +156,6 @@ button { font-family: inherit; }
     padding-bottom: 2px;
   }
   .nav a { flex: 0 0 auto; }
+  .view { padding: 20px 14px 28px; }
+  .view.reader-view { padding: 12px 8px 24px; }
 }

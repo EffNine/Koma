@@ -1,0 +1,45 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "K oma" [ref=e5] [cursor=pointer]:
+      - /url: "#/"
+      - generic [ref=e6]: K
+      - text: oma
+    - navigation [ref=e7]:
+      - link "Home" [ref=e8] [cursor=pointer]:
+        - /url: "#/"
+      - link "Library" [ref=e9] [cursor=pointer]:
+        - /url: "#/library"
+      - link "Search" [ref=e10] [cursor=pointer]:
+        - /url: "#/search"
+      - link "Browse" [ref=e11] [cursor=pointer]:
+        - /url: "#/categories"
+      - link "Activity" [ref=e12] [cursor=pointer]:
+        - /url: "#/activity"
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: "#/settings"
+    - textbox "Find a title" [ref=e15]
+  - main [ref=e16]:
+    - button "Back" [ref=e886] [cursor=pointer]
+    - generic [ref=e887]:
+      - img "One Piece" [ref=e889]
+      - generic [ref=e890]:
+        - heading "One Piece" [level=1] [ref=e891]
+        - generic [ref=e892]:
+          - generic [ref=e893]: Manga
+          - generic [ref=e894]: RELEASING
+          - generic [ref=e895]: "1997"
+          - generic [ref=e896]: ★ 9.1
+        - generic [ref=e897]:
+          - generic [ref=e898]: Action
+          - generic [ref=e899]: Adventure
+          - generic [ref=e900]: Comedy
+          - generic [ref=e901]: Fantasy
+        - paragraph [ref=e902]: "As a child, Monkey D. Luffy was inspired to become a pirate by listening to the tales of the buccaneer \"Red-Haired\" Shanks. But his life changed when Luffy accidentally ate the Gum-Gum Devil Fruit and gained the power to stretch like rubber...at the cost of never being able to swim again! Years later, still vowing to become the king of the pirates, Luffy sets out on his adventure...one guy alone in a rowboat, in search of the legendary \"One Piece,\" said to be the greatest treasure in the world... (Source: VIZ Media)"
+        - generic [ref=e903]:
+          - button "Follow" [ref=e904] [cursor=pointer]
+          - link "AniList ↗" [ref=e905] [cursor=pointer]:
+            - /url: https://anilist.co/manga/30013
+        - generic [ref=e906]: Resolving chapters from enabled sources...
+    - generic [ref=e907]:
+      - heading "Chapters" [level=2] [ref=e909]
+      - generic [ref=e910]: Loading chapters…

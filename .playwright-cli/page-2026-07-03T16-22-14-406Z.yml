@@ -1,0 +1,415 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "K oma" [ref=e5] [cursor=pointer]:
+      - /url: "#/"
+      - generic [ref=e6]: K
+      - text: oma
+    - navigation [ref=e7]:
+      - link "Home" [ref=e8] [cursor=pointer]:
+        - /url: "#/"
+      - link "Library" [ref=e9] [cursor=pointer]:
+        - /url: "#/library"
+      - link "Search" [ref=e10] [cursor=pointer]:
+        - /url: "#/search"
+      - link "Browse" [ref=e11] [cursor=pointer]:
+        - /url: "#/categories"
+      - link "Activity" [ref=e12] [cursor=pointer]:
+        - /url: "#/activity"
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: "#/settings"
+    - textbox "Find a title" [ref=e15]
+  - main [ref=e16]:
+    - button "Back" [ref=e222] [cursor=pointer]
+    - generic [ref=e223]:
+      - img "One Piece" [ref=e225]
+      - generic [ref=e226]:
+        - heading "One Piece" [level=1] [ref=e227]
+        - generic [ref=e228]:
+          - generic [ref=e229]: Manga
+          - generic [ref=e230]: RELEASING
+          - generic [ref=e231]: "1997"
+          - generic [ref=e232]: ★ 9.1
+        - generic [ref=e233]:
+          - generic [ref=e234]: Action
+          - generic [ref=e235]: Adventure
+          - generic [ref=e236]: Comedy
+          - generic [ref=e237]: Fantasy
+        - paragraph [ref=e238]: "As a child, Monkey D. Luffy was inspired to become a pirate by listening to the tales of the buccaneer \"Red-Haired\" Shanks. But his life changed when Luffy accidentally ate the Gum-Gum Devil Fruit and gained the power to stretch like rubber...at the cost of never being able to swim again! Years later, still vowing to become the king of the pirates, Luffy sets out on his adventure...one guy alone in a rowboat, in search of the legendary \"One Piece,\" said to be the greatest treasure in the world... (Source: VIZ Media)"
+        - generic [ref=e239]:
+          - button "Start Reading" [ref=e247] [cursor=pointer]
+          - button "Follow" [ref=e240] [cursor=pointer]
+          - link "AniList ↗" [ref=e241] [cursor=pointer]:
+            - /url: https://anilist.co/manga/30013
+        - generic [ref=e242]: Chapters from ComicK
+    - generic [ref=e243]:
+      - generic [ref=e244]:
+        - heading "Chapters" [level=2] [ref=e245]
+        - generic [ref=e248]: 1316 chapters · 2509 uploads
+      - generic [ref=e249]:
+        - generic [ref=e250]:
+          - button "Ch. 1187" [ref=e252] [cursor=pointer]
+          - generic [ref=e253]: 12h ago
+          - generic [ref=e254]:
+            - button "▶" [ref=e255] [cursor=pointer]
+            - button "↩" [ref=e256] [cursor=pointer]
+        - generic [ref=e257]:
+          - button "Ch. 1186" [ref=e259] [cursor=pointer]
+          - generic [ref=e260]: 7d ago
+          - generic [ref=e261]:
+            - button "▶" [ref=e262] [cursor=pointer]
+            - button "↩" [ref=e263] [cursor=pointer]
+        - generic [ref=e264]:
+          - button "Ch. 1185" [ref=e266] [cursor=pointer]
+          - generic [ref=e267]: 7d ago
+          - generic [ref=e268]:
+            - button "▶" [ref=e269] [cursor=pointer]
+            - button "↩" [ref=e270] [cursor=pointer]
+        - generic [ref=e271]:
+          - button "Ch. 1184" [ref=e273] [cursor=pointer]
+          - generic [ref=e274]: 7d ago
+          - generic [ref=e275]:
+            - button "▶" [ref=e276] [cursor=pointer]
+            - button "↩" [ref=e277] [cursor=pointer]
+        - generic [ref=e278]:
+          - button "Ch. 1183" [ref=e280] [cursor=pointer]
+          - generic [ref=e281]: 7d ago
+          - generic [ref=e282]:
+            - button "▶" [ref=e283] [cursor=pointer]
+            - button "↩" [ref=e284] [cursor=pointer]
+        - generic [ref=e285]:
+          - button "Ch. 1182" [ref=e287] [cursor=pointer]
+          - generic [ref=e288]: 1mo ago
+          - generic [ref=e289]:
+            - button "▶" [ref=e290] [cursor=pointer]
+            - button "↩" [ref=e291] [cursor=pointer]
+        - generic [ref=e292]:
+          - button "Ch. 1181" [ref=e294] [cursor=pointer]
+          - generic [ref=e295]: 2mo ago
+          - generic [ref=e296]:
+            - button "▶" [ref=e297] [cursor=pointer]
+            - button "↩" [ref=e298] [cursor=pointer]
+        - generic [ref=e299]:
+          - button "Ch. 1180" [ref=e301] [cursor=pointer]
+          - generic [ref=e302]: 2mo ago
+          - generic [ref=e303]:
+            - button "▶" [ref=e304] [cursor=pointer]
+            - button "↩" [ref=e305] [cursor=pointer]
+        - generic [ref=e306]:
+          - button "Ch. 1179" [ref=e308] [cursor=pointer]
+          - generic [ref=e309]: 3mo ago
+          - generic [ref=e310]:
+            - button "▶" [ref=e311] [cursor=pointer]
+            - button "↩" [ref=e312] [cursor=pointer]
+        - generic [ref=e313]:
+          - button "Ch. 1178" [ref=e315] [cursor=pointer]
+          - generic [ref=e316]: 3mo ago
+          - generic [ref=e317]:
+            - button "▶" [ref=e318] [cursor=pointer]
+            - button "↩" [ref=e319] [cursor=pointer]
+        - generic [ref=e320]:
+          - button "Ch. 1177" [ref=e322] [cursor=pointer]
+          - generic [ref=e323]: 3mo ago
+          - generic [ref=e324]:
+            - button "▶" [ref=e325] [cursor=pointer]
+            - button "↩" [ref=e326] [cursor=pointer]
+        - generic [ref=e327]:
+          - button "Ch. 1176" [ref=e329] [cursor=pointer]
+          - generic [ref=e330]: 3mo ago
+          - generic [ref=e331]:
+            - button "▶" [ref=e332] [cursor=pointer]
+            - button "↩" [ref=e333] [cursor=pointer]
+        - generic [ref=e334]:
+          - button "Ch. 1175" [ref=e336] [cursor=pointer]
+          - generic [ref=e337]: 4mo ago
+          - generic [ref=e338]:
+            - button "▶" [ref=e339] [cursor=pointer]
+            - button "↩" [ref=e340] [cursor=pointer]
+        - generic [ref=e341]:
+          - button "Ch. 1174" [ref=e343] [cursor=pointer]
+          - generic [ref=e344]: 4mo ago
+          - generic [ref=e345]:
+            - button "▶" [ref=e346] [cursor=pointer]
+            - button "↩" [ref=e347] [cursor=pointer]
+        - generic [ref=e348]:
+          - button "Ch. 1173" [ref=e350] [cursor=pointer]
+          - generic [ref=e351]: 4mo ago
+          - generic [ref=e352]:
+            - button "▶" [ref=e353] [cursor=pointer]
+            - button "↩" [ref=e354] [cursor=pointer]
+        - generic [ref=e355]:
+          - button "Ch. 1172" [ref=e357] [cursor=pointer]
+          - generic [ref=e358]: 4mo ago
+          - generic [ref=e359]:
+            - button "▶" [ref=e360] [cursor=pointer]
+            - button "↩" [ref=e361] [cursor=pointer]
+        - generic [ref=e362]:
+          - button "Ch. 1171" [ref=e364] [cursor=pointer]
+          - generic [ref=e365]: 5mo ago
+          - generic [ref=e366]:
+            - button "▶" [ref=e367] [cursor=pointer]
+            - button "↩" [ref=e368] [cursor=pointer]
+        - generic [ref=e369]:
+          - button "Ch. 1170" [ref=e371] [cursor=pointer]
+          - generic [ref=e372]: 5mo ago
+          - generic [ref=e373]:
+            - button "▶" [ref=e374] [cursor=pointer]
+            - button "↩" [ref=e375] [cursor=pointer]
+        - generic [ref=e376]:
+          - button "Ch. 1169" [ref=e378] [cursor=pointer]
+          - generic [ref=e379]: 6mo ago
+          - generic [ref=e380]:
+            - button "▶" [ref=e381] [cursor=pointer]
+            - button "↩" [ref=e382] [cursor=pointer]
+        - generic [ref=e383]:
+          - button "Ch. 1168" [ref=e385] [cursor=pointer]
+          - generic [ref=e386]: 6mo ago
+          - generic [ref=e387]:
+            - button "▶" [ref=e388] [cursor=pointer]
+            - button "↩" [ref=e389] [cursor=pointer]
+        - generic [ref=e390]:
+          - button "Ch. 1167" [ref=e392] [cursor=pointer]
+          - generic [ref=e393]: 6mo ago
+          - generic [ref=e394]:
+            - button "▶" [ref=e395] [cursor=pointer]
+            - button "↩" [ref=e396] [cursor=pointer]
+        - generic [ref=e397]:
+          - button "Ch. 1166" [ref=e399] [cursor=pointer]
+          - generic [ref=e400]: 6mo ago
+          - generic [ref=e401]:
+            - button "▶" [ref=e402] [cursor=pointer]
+            - button "↩" [ref=e403] [cursor=pointer]
+        - generic [ref=e404]:
+          - button "Ch. 1165" [ref=e406] [cursor=pointer]
+          - generic [ref=e407]: 7mo ago
+          - generic [ref=e408]:
+            - button "▶" [ref=e409] [cursor=pointer]
+            - button "↩" [ref=e410] [cursor=pointer]
+        - generic [ref=e411]:
+          - button "Ch. 1164" [ref=e413] [cursor=pointer]
+          - generic [ref=e414]: 7mo ago
+          - generic [ref=e415]:
+            - button "▶" [ref=e416] [cursor=pointer]
+            - button "↩" [ref=e417] [cursor=pointer]
+        - generic [ref=e418]:
+          - button "Ch. 1163" [ref=e420] [cursor=pointer]
+          - generic [ref=e421]: 7mo ago
+          - generic [ref=e422]:
+            - button "▶" [ref=e423] [cursor=pointer]
+            - button "↩" [ref=e424] [cursor=pointer]
+        - generic [ref=e425]:
+          - button "Ch. 1162" [ref=e427] [cursor=pointer]
+          - generic [ref=e428]: 8mo ago
+          - generic [ref=e429]:
+            - button "▶" [ref=e430] [cursor=pointer]
+            - button "↩" [ref=e431] [cursor=pointer]
+        - generic [ref=e432]:
+          - button "Ch. 1161" [ref=e434] [cursor=pointer]
+          - generic [ref=e435]: 8mo ago
+          - generic [ref=e436]:
+            - button "▶" [ref=e437] [cursor=pointer]
+            - button "↩" [ref=e438] [cursor=pointer]
+        - generic [ref=e439]:
+          - button "Ch. 1160" [ref=e441] [cursor=pointer]
+          - generic [ref=e442]: 8mo ago
+          - generic [ref=e443]:
+            - button "▶" [ref=e444] [cursor=pointer]
+            - button "↩" [ref=e445] [cursor=pointer]
+        - generic [ref=e446]:
+          - button "Ch. 1159" [ref=e448] [cursor=pointer]
+          - generic [ref=e449]: 8mo ago
+          - generic [ref=e450]:
+            - button "▶" [ref=e451] [cursor=pointer]
+            - button "↩" [ref=e452] [cursor=pointer]
+        - generic [ref=e453]:
+          - button "Ch. 1158" [ref=e455] [cursor=pointer]
+          - generic [ref=e456]: 8mo ago
+          - generic [ref=e457]:
+            - button "▶" [ref=e458] [cursor=pointer]
+            - button "↩" [ref=e459] [cursor=pointer]
+        - generic [ref=e460]:
+          - button "Ch. 1157" [ref=e462] [cursor=pointer]
+          - generic [ref=e463]: 8mo ago
+          - generic [ref=e464]:
+            - button "▶" [ref=e465] [cursor=pointer]
+            - button "↩" [ref=e466] [cursor=pointer]
+        - generic [ref=e467]:
+          - button "Ch. 1156" [ref=e469] [cursor=pointer]
+          - generic [ref=e470]: 8mo ago
+          - generic [ref=e471]:
+            - button "▶" [ref=e472] [cursor=pointer]
+            - button "↩" [ref=e473] [cursor=pointer]
+        - generic [ref=e474]:
+          - button "Ch. 1155" [ref=e476] [cursor=pointer]
+          - generic [ref=e477]: 8mo ago
+          - generic [ref=e478]:
+            - button "▶" [ref=e479] [cursor=pointer]
+            - button "↩" [ref=e480] [cursor=pointer]
+        - generic [ref=e481]:
+          - button "Ch. 1154" [ref=e483] [cursor=pointer]
+          - generic [ref=e484]: 8mo ago
+          - generic [ref=e485]:
+            - button "▶" [ref=e486] [cursor=pointer]
+            - button "↩" [ref=e487] [cursor=pointer]
+        - generic [ref=e488]:
+          - button "Ch. 1153" [ref=e490] [cursor=pointer]
+          - generic [ref=e491]: 8mo ago
+          - generic [ref=e492]:
+            - button "▶" [ref=e493] [cursor=pointer]
+            - button "↩" [ref=e494] [cursor=pointer]
+        - generic [ref=e495]:
+          - button "Ch. 1152" [ref=e497] [cursor=pointer]
+          - generic [ref=e498]: 8mo ago
+          - generic [ref=e499]:
+            - button "▶" [ref=e500] [cursor=pointer]
+            - button "↩" [ref=e501] [cursor=pointer]
+        - generic [ref=e502]:
+          - button "Ch. 1151" [ref=e504] [cursor=pointer]
+          - generic [ref=e505]: 8mo ago
+          - generic [ref=e506]:
+            - button "▶" [ref=e507] [cursor=pointer]
+            - button "↩" [ref=e508] [cursor=pointer]
+        - generic [ref=e509]:
+          - button "Ch. 1150" [ref=e511] [cursor=pointer]
+          - generic [ref=e512]: 8mo ago
+          - generic [ref=e513]:
+            - button "▶" [ref=e514] [cursor=pointer]
+            - button "↩" [ref=e515] [cursor=pointer]
+        - generic [ref=e516]:
+          - button "Ch. 1149" [ref=e518] [cursor=pointer]
+          - generic [ref=e519]: 8mo ago
+          - generic [ref=e520]:
+            - button "▶" [ref=e521] [cursor=pointer]
+            - button "↩" [ref=e522] [cursor=pointer]
+        - generic [ref=e523]:
+          - button "Ch. 1148" [ref=e525] [cursor=pointer]
+          - generic [ref=e526]: 8mo ago
+          - generic [ref=e527]:
+            - button "▶" [ref=e528] [cursor=pointer]
+            - button "↩" [ref=e529] [cursor=pointer]
+        - generic [ref=e530]:
+          - button "Ch. 1147" [ref=e532] [cursor=pointer]
+          - generic [ref=e533]: 8mo ago
+          - generic [ref=e534]:
+            - button "▶" [ref=e535] [cursor=pointer]
+            - button "↩" [ref=e536] [cursor=pointer]
+        - generic [ref=e537]:
+          - button "Ch. 1146" [ref=e539] [cursor=pointer]
+          - generic [ref=e540]: 9mo ago
+          - generic [ref=e541]:
+            - button "▶" [ref=e542] [cursor=pointer]
+            - button "↩" [ref=e543] [cursor=pointer]
+        - generic [ref=e544]:
+          - button "Ch. 1145" [ref=e546] [cursor=pointer]
+          - generic [ref=e547]: 8mo ago
+          - generic [ref=e548]:
+            - button "▶" [ref=e549] [cursor=pointer]
+            - button "↩" [ref=e550] [cursor=pointer]
+        - generic [ref=e551]:
+          - button "Ch. 1144" [ref=e553] [cursor=pointer]
+          - generic [ref=e554]: 8mo ago
+          - generic [ref=e555]:
+            - button "▶" [ref=e556] [cursor=pointer]
+            - button "↩" [ref=e557] [cursor=pointer]
+        - generic [ref=e558]:
+          - button "Ch. 1143" [ref=e560] [cursor=pointer]
+          - generic [ref=e561]: 8mo ago
+          - generic [ref=e562]:
+            - button "▶" [ref=e563] [cursor=pointer]
+            - button "↩" [ref=e564] [cursor=pointer]
+        - generic [ref=e565]:
+          - button "Ch. 1142" [ref=e567] [cursor=pointer]
+          - generic [ref=e568]: 8mo ago
+          - generic [ref=e569]:
+            - button "▶" [ref=e570] [cursor=pointer]
+            - button "↩" [ref=e571] [cursor=pointer]
+        - generic [ref=e572]:
+          - button "Ch. 1141" [ref=e574] [cursor=pointer]
+          - generic [ref=e575]: 8mo ago
+          - generic [ref=e576]:
+            - button "▶" [ref=e577] [cursor=pointer]
+            - button "↩" [ref=e578] [cursor=pointer]
+        - generic [ref=e579]:
+          - button "Ch. 1140" [ref=e581] [cursor=pointer]
+          - generic [ref=e582]: 8mo ago
+          - generic [ref=e583]:
+            - button "▶" [ref=e584] [cursor=pointer]
+            - button "↩" [ref=e585] [cursor=pointer]
+        - generic [ref=e586]:
+          - button "Ch. 1139" [ref=e588] [cursor=pointer]
+          - generic [ref=e589]: 8mo ago
+          - generic [ref=e590]:
+            - button "▶" [ref=e591] [cursor=pointer]
+            - button "↩" [ref=e592] [cursor=pointer]
+        - generic [ref=e593]:
+          - button "Ch. 1138" [ref=e595] [cursor=pointer]
+          - generic [ref=e596]: 9mo ago
+          - generic [ref=e597]:
+            - button "▶" [ref=e598] [cursor=pointer]
+            - button "↩" [ref=e599] [cursor=pointer]
+        - generic [ref=e600]:
+          - button "Ch. 1137" [ref=e602] [cursor=pointer]
+          - generic [ref=e603]: 8mo ago
+          - generic [ref=e604]:
+            - button "▶" [ref=e605] [cursor=pointer]
+            - button "↩" [ref=e606] [cursor=pointer]
+        - generic [ref=e607]:
+          - button "Ch. 1136" [ref=e609] [cursor=pointer]
+          - generic [ref=e610]: 8mo ago
+          - generic [ref=e611]:
+            - button "▶" [ref=e612] [cursor=pointer]
+            - button "↩" [ref=e613] [cursor=pointer]
+        - generic [ref=e614]:
+          - button "Ch. 1135" [ref=e616] [cursor=pointer]
+          - generic [ref=e617]: 8mo ago
+          - generic [ref=e618]:
+            - button "▶" [ref=e619] [cursor=pointer]
+            - button "↩" [ref=e620] [cursor=pointer]
+        - generic [ref=e621]:
+          - button "Ch. 1134" [ref=e623] [cursor=pointer]
+          - generic [ref=e624]: 8mo ago
+          - generic [ref=e625]:
+            - button "▶" [ref=e626] [cursor=pointer]
+            - button "↩" [ref=e627] [cursor=pointer]
+        - generic [ref=e628]:
+          - button "Ch. 1133" [ref=e630] [cursor=pointer]
+          - generic [ref=e631]: 9mo ago
+          - generic [ref=e632]:
+            - button "▶" [ref=e633] [cursor=pointer]
+            - button "↩" [ref=e634] [cursor=pointer]
+        - generic [ref=e635]:
+          - button "Ch. 1132" [ref=e637] [cursor=pointer]
+          - generic [ref=e638]: 8mo ago
+          - generic [ref=e639]:
+            - button "▶" [ref=e640] [cursor=pointer]
+            - button "↩" [ref=e641] [cursor=pointer]
+        - generic [ref=e642]:
+          - button "Ch. 1131" [ref=e644] [cursor=pointer]
+          - generic [ref=e645]: 9mo ago
+          - generic [ref=e646]:
+            - button "▶" [ref=e647] [cursor=pointer]
+            - button "↩" [ref=e648] [cursor=pointer]
+        - generic [ref=e649]:
+          - button "Ch. 1130" [ref=e651] [cursor=pointer]
+          - generic [ref=e652]: 9mo ago
+          - generic [ref=e653]:
+            - button "▶" [ref=e654] [cursor=pointer]
+            - button "↩" [ref=e655] [cursor=pointer]
+        - generic [ref=e656]:
+          - button "Ch. 1129" [ref=e658] [cursor=pointer]
+          - generic [ref=e659]: 9mo ago
+          - generic [ref=e660]:
+            - button "▶" [ref=e661] [cursor=pointer]
+            - button "↩" [ref=e662] [cursor=pointer]
+        - generic [ref=e663]:
+          - button "Ch. 1128" [ref=e665] [cursor=pointer]
+          - generic [ref=e666]: 9mo ago
+          - generic [ref=e667]:
+            - button "▶" [ref=e668] [cursor=pointer]
+            - button "↩" [ref=e669] [cursor=pointer]
+      - generic [ref=e670]:
+        - generic [ref=e671]: Showing chapters 1–60 of 1316 — page 1/22
+        - button "Next →" [ref=e673] [cursor=pointer]
+        - generic [ref=e674]:
+          - generic [ref=e675]: Go to chap
+          - textbox "#" [ref=e676]
+          - button "Go" [ref=e677] [cursor=pointer]

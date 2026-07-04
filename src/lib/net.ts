@@ -14,18 +14,40 @@ export interface RawResp {
   final_url: string;
 }
 
+export interface FetchOptions {
+  referer?: string;
+  headers?: Record<string, string>;
+  method?: 'GET' | 'POST' | 'PATCH' | 'PUT' | 'DELETE';
+  body?: string;
+}
+
+export function fetchRawInvokeArgs(url: string, opts: FetchOptions = {}) {
+  const host = new URL(url).host;
+  const cfCookies = getStoredCfCookies(host) || null;
+  return {
+    url,
+    referer: opts.referer ?? null,
+    headers: opts.headers ?? null,
+    cfCookies,
+    method: opts.method ?? null,
+    bodyB64: opts.body ? btoa(opts.body) : null,
+  };
+}
+
 // Cloudflare cookie store — persists cookies keyed by hostname.
 // On desktop, cookies are stored in the Rust backend.
 // On web/PWA, we use localStorage (limited utility since proxy can't use them).
 const CF_COOKIES_KEY = 'koma.cf_cookies';
 
 function getCfCookiesSync(): Record<string, string> {
+  if (typeof localStorage === 'undefined') return {};
   try {
     return JSON.parse(localStorage.getItem(CF_COOKIES_KEY) || '{}');
   } catch { return {}; }
 }
 
 function setCfCookiesSync(store: Record<string, string>) {
+  if (typeof localStorage === 'undefined') return;
   localStorage.setItem(CF_COOKIES_KEY, JSON.stringify(store));
 }
 
@@ -49,20 +71,9 @@ export function listCfCookies(): string[] {
   return Object.keys(getCfCookiesSync());
 }
 
-export async function fetchRaw(
-  url: string,
-  opts: { referer?: string; headers?: Record<string, string> } = {},
-): Promise<RawResp> {
+export async function fetchRaw(url: string, opts: FetchOptions = {}): Promise<RawResp> {
   if (isTauri) {
-    // Look up Cloudflare cookies for this host
-    const host = new URL(url).host;
-    const cfCookies = getStoredCfCookies(host) || null;
-    return invoke<RawResp>('fetch_raw', {
-      url,
-      referer: opts.referer ?? null,
-      headers: opts.headers ?? null,
-      cfCookies,
-    });
+    return invoke<RawResp>('fetch_raw', fetchRawInvokeArgs(url, opts));
   }
   const u = PROXY.startsWith('/')
     ? new URL(PROXY, window.location.origin)
@@ -71,6 +82,12 @@ export async function fetchRaw(
   if (opts.referer) u.searchParams.set('referer', opts.referer);
   if (opts.headers && Object.keys(opts.headers).length > 0) {
     u.searchParams.set('headers', JSON.stringify(opts.headers));
+  }
+  if (opts.method && opts.method !== 'GET') {
+    u.searchParams.set('method', opts.method);
+  }
+  if (opts.body) {
+    u.searchParams.set('body_b64', btoa(opts.body));
   }
   let r: Response;
   try {
@@ -125,15 +142,20 @@ function bytesOf(resp: RawResp): Uint8Array {
 export function textOf(resp: RawResp): string {
   return new TextDecoder().decode(bytesOf(resp));
 }
-export async function fetchText(
-  url: string,
-  opts?: { referer?: string; headers?: Record<string, string> },
-): Promise<string> {
+export async function fetchText(url: string, opts?: FetchOptions): Promise<string> {
   return textOf(await fetchRaw(url, opts));
 }
 export async function fetchBytes(
   url: string,
-  opts?: { referer?: string; headers?: Record<string, string> },
+  opts?: FetchOptions,
 ): Promise<Uint8Array> {
   return bytesOf(await fetchRaw(url, opts));
+}
+export async function fetchJson<T = unknown>(url: string, opts?: FetchOptions): Promise<T> {
+  const text = await fetchText(url, opts);
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Invalid JSON from ${url}: ${text.slice(0, 200)}`);
+  }
 }

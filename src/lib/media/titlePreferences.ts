@@ -5,6 +5,7 @@ export type ImageFit = 'width' | 'screen' | 'original';
 
 export interface TitlePreference {
   mediaId: number;
+  preferredSourceId?: string;
   preferredGroup?: string;
   readerDirection?: ReaderDirection;
   imageFit?: ImageFit;
@@ -13,6 +14,21 @@ export interface TitlePreference {
 
 export async function getTitlePreference(mediaId: number): Promise<TitlePreference | undefined> {
   return db.titlePreferences.get(mediaId);
+}
+
+export async function savePreferredSource(
+  mediaId: number,
+  sourceId: string | undefined,
+): Promise<TitlePreference> {
+  const existing = await db.titlePreferences.get(mediaId);
+  const next: TitlePreference = {
+    ...existing,
+    mediaId,
+    preferredSourceId: sourceId,
+    updatedAt: Date.now(),
+  };
+  await db.titlePreferences.put(next);
+  return next;
 }
 
 export async function savePreferredGroup(

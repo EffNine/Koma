@@ -1,0 +1,66 @@
+- generic [ref=e3]:
+  - banner [ref=e4]:
+    - link "K oma" [ref=e5] [cursor=pointer]:
+      - /url: "#/"
+      - generic [ref=e6]: K
+      - text: oma
+    - navigation [ref=e7]:
+      - link "Home" [ref=e8] [cursor=pointer]:
+        - /url: "#/"
+      - link "Library" [ref=e9] [cursor=pointer]:
+        - /url: "#/library"
+      - link "Search" [ref=e10] [cursor=pointer]:
+        - /url: "#/search"
+      - link "Browse" [ref=e11] [cursor=pointer]:
+        - /url: "#/categories"
+      - link "Activity" [ref=e12] [cursor=pointer]:
+        - /url: "#/activity"
+      - link "Settings" [ref=e13] [cursor=pointer]:
+        - /url: "#/settings"
+    - textbox "Find a title" [ref=e15]
+  - main [ref=e16]:
+    - generic [ref=e777]:
+      - generic [ref=e778]:
+        - button "← Back" [ref=e779] [cursor=pointer]
+        - generic [ref=e780]:
+          - heading "One Piece" [level=1] [ref=e781]
+          - generic [ref=e782]:
+            - generic [ref=e783]: ComicK
+            - link "Source chapter ↗" [ref=e784] [cursor=pointer]:
+              - /url: https://comickz.co.uk/comic/one-piece/EmoCm01-chapter-0-en
+      - generic [ref=e785]:
+        - generic [ref=e786]:
+          - generic [ref=e787]: Direction
+          - generic [ref=e788]:
+            - button "RTL" [ref=e789] [cursor=pointer]
+            - button "Vertical" [ref=e790] [cursor=pointer]
+            - button "LTR" [ref=e791] [cursor=pointer]
+          - button "Save" [ref=e792] [cursor=pointer]
+        - generic [ref=e793]:
+          - generic [ref=e794]: Image Fit
+          - generic [ref=e795]:
+            - button "Fit Width" [ref=e796] [cursor=pointer]
+            - button "Fit Screen" [ref=e797] [cursor=pointer]
+            - button "Original" [ref=e798] [cursor=pointer]
+          - button "Save" [ref=e799] [cursor=pointer]
+        - generic [ref=e800]:
+          - generic [ref=e801]: Spread
+          - generic [ref=e802]:
+            - button "Single" [ref=e803] [cursor=pointer]
+            - button "Double" [ref=e804] [cursor=pointer]
+        - generic [ref=e805]:
+          - generic [ref=e806]: Progress
+          - strong [ref=e808]: 0 / 0
+          - generic "Reading progress 0%" [ref=e809]
+        - generic [ref=e810]:
+          - generic [ref=e811]: Shortcuts
+          - generic [ref=e812]: ←→
+          - generic [ref=e813]: F
+          - text: fit
+          - generic [ref=e814]: D
+          - text: dir
+          - generic [ref=e815]: G
+          - text: goto
+      - generic [ref=e816]:
+        - generic [ref=e817]: Preparing chapter…
+        - generic [ref=e818]: Resolving the source, extracting page URLs, and restoring the saved reading position.

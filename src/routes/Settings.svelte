@@ -3,6 +3,7 @@
   import { listSources, addByUrl, removeSource, toggleSource, importSources, recheckSource, updateSourcePriority } from '../lib/scraper/sources';
   import type { Source } from '../lib/scraper/sources';
   import {
+    ANILIST_REDIRECT_URI,
     configureAniList,
     configureMal,
     configureMangaUpdates,
@@ -21,6 +22,8 @@
   import { unlockCloudflare, listCfCookies, clearCfCookies, onCfUnlockProgress } from '../lib/net';
   import { exportBackup, importBackup, downloadBackup } from '../lib/backup/export';
   import { getTotalCacheSize, clearAllChapterCache } from '../lib/reader/chapterCache';
+  import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
+  import type { ConfirmActionId } from '../lib/ui/confirm';
 
   let sources = $state<Source[]>([]);
   let urlInput = $state('');
@@ -51,6 +54,7 @@
   let importBusy = $state(false);
 
   // Cloudflare unlock state
+  let confirm = $state<{ action: ConfirmActionId; subject?: string; onConfirm: () => void } | null>(null);
   let cfUnlockUrl = $state('');
   let cfUnlockMsg = $state('');
   let cfUnlockTone = $state<'info' | 'ok' | 'warn' | 'err'>('info');
@@ -330,9 +334,18 @@
 <h1 class="h1">Settings</h1>
 <p class="sub">Manage sources, trackers, reader defaults, and cache.</p>
 
+{#if confirm}
+  <ConfirmDialog
+    action={confirm.action}
+    subject={confirm.subject}
+    onConfirm={confirm.onConfirm}
+    onCancel={() => (confirm = null)}
+  />
+{/if}
+
 <div class="card sec">
   <h2>Sources</h2>
-  <p class="hint">Paste a site URL and Koma will auto-check it, detect a supported preset when possible, then save the source. Import still works for existing <code>sources.json</code> bundles. Drag the up/down arrows to reorder source priority.</p>
+  <p class="hint">Add, check, and prioritize chapter sources.</p>
   <form class="row" onsubmit={add}>
     <input bind:value={urlInput} placeholder="https://manga-example.site" class="inp" />
     <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Add & Check'}</button>
@@ -377,7 +390,7 @@
         </div>
         <div class="sactions">
           <button class="btn small" onclick={() => checkAgain(s.id)} disabled={checkingId === s.id}>{checkingId === s.id ? 'Checking…' : 'Check Again'}</button>
-          <button class="btn small" onclick={async () => { await removeSource(s.id); refresh(); }}>Remove</button>
+          <button class="btn small" onclick={() => (confirm = { action: 'removeSource', subject: s.name, onConfirm: async () => { await removeSource(s.id); refresh(); confirm = null; } })}>Remove</button>
         </div>
       </div>
     {:else}
@@ -388,7 +401,7 @@
 
 <div class="card sec">
   <h2>Cloudflare Unlock (Desktop only)</h2>
-  <p class="hint">Some manga sites are behind Cloudflare. On the desktop app, you can open a popup browser to pass the challenge and store cookies. Once unlocked, the app will use those cookies for all requests to that site.</p>
+  <p class="hint">Store desktop cookies for sources that require a browser challenge.</p>
   <form onsubmit={onUnlockCloudflare} class="row">
     <input class="inp" type="url" placeholder="https://mangasite.example" bind:value={cfUnlockUrl} disabled={cfUnlockBusy} />
     <button class="btn" type="submit" disabled={cfUnlockBusy || !cfUnlockUrl.trim()}>{cfUnlockBusy ? 'Unlocking…' : 'Unlock'}</button>
@@ -404,7 +417,7 @@
             <div class="sname">{host} <span class="state ready">Unlocked</span></div>
           </div>
           <div class="sactions">
-            <button class="btn small" onclick={() => onClearCfCookies(host)}>Clear</button>
+            <button class="btn small" onclick={() => (confirm = { action: 'clearCfCookies', subject: host, onConfirm: () => { onClearCfCookies(host); confirm = null; } })}>Clear</button>
           </div>
         </div>
       {/each}
@@ -414,7 +427,7 @@
 
 <div class="card sec">
   <h2>Trackers</h2>
-  <p class="hint">Connect AniList, MyAnimeList, or MangaUpdates to sync reading progress. OAuth flows open in a desktop window; MangaUpdates uses your site credentials.</p>
+  <p class="hint">Connect external progress trackers.</p>
 
   {#if trackerMsg}
     <div class:ok={trackerMsgTone === 'ok'} class:warn={trackerMsgTone === 'warn'} class:errbox={trackerMsgTone === 'err'} class="msg">{trackerMsg}</div>
@@ -446,7 +459,7 @@
         </div>
         <div class="sactions">
           {#if connected}
-            <button class="btn small" onclick={() => onDisconnectTracker(t.id)} disabled={busy}>{busy ? 'Working…' : 'Disconnect'}</button>
+            <button class="btn small" onclick={() => (confirm = { action: 'disconnectTracker', subject: t.name, onConfirm: () => { onDisconnectTracker(t.id); confirm = null; } })} disabled={busy}>{busy ? 'Working…' : 'Disconnect'}</button>
           {:else}
             <button class="btn small" onclick={() => onConnectTracker(t.id)} disabled={busy}>{busy ? 'Working…' : 'Connect'}</button>
           {/if}
@@ -456,7 +469,8 @@
       {#if t.id === 'anilist'}
         <div class="tracker-config">
           <input bind:value={anilistClientId} placeholder="AniList client id" class="inp" />
-          <input bind:value={anilistClientSecret} placeholder="Client secret (optional)" class="inp" />
+          <input bind:value={anilistClientSecret} type="password" placeholder="Client secret" class="inp" />
+          <div class="config-note">AniList redirect URL: <code>{ANILIST_REDIRECT_URI}</code></div>
         </div>
       {:else if t.id === 'mal'}
         <div class="tracker-config">
@@ -476,7 +490,7 @@
 
 <div class="card sec">
   <h2>Reader</h2>
-  <p class="hint">Default reading direction for new chapters. Override per-chapter in the reader toolbar.</p>
+  <p class="hint">Default direction for new chapters.</p>
   <div class="reader-defaults">
     <label class="sel-wrap">
       <span>Default direction</span>
@@ -491,7 +505,7 @@
 
 <div class="card sec">
   <h2>Cache</h2>
-  <p class="hint">Koma caches catalog data (search results, title details) to reduce API calls, and chapter pages for offline reading. Clear caches to free up storage.</p>
+  <p class="hint">Review local catalog and chapter storage.</p>
   <div class="cache-controls">
     <div class="cache-info">
       {#if cacheSize !== null}
@@ -503,8 +517,8 @@
         <span>• {chapterCacheSize > 0 ? `${(chapterCacheSize / 1024 / 1024).toFixed(1)} MB` : '0 B'} chapter cache</span>
       {/if}
     </div>
-    <button class="btn" onclick={onClearCache}>Clear Catalog Cache</button>
-    <button class="btn" onclick={onClearChapterCache}>Clear Chapter Cache</button>
+    <button class="btn" onclick={() => (confirm = { action: 'clearCache', onConfirm: () => { onClearCache(); confirm = null; } })}>Clear Catalog Cache</button>
+    <button class="btn" onclick={() => (confirm = { action: 'clearChapterCache', onConfirm: () => { onClearChapterCache(); confirm = null; } })}>Clear Chapter Cache</button>
   </div>
   {#if cacheMsg}
     <div class="msg ok">{cacheMsg}</div>
@@ -516,12 +530,12 @@
 
 <div class="card sec">
   <h2>Backup &amp; Restore</h2>
-  <p class="hint">Export your Koma data (sources, tracked titles, progress, reader settings) as a JSON file, or import a previous backup. Import merges by primary key and keeps the newest data where available.</p>
+  <p class="hint">Export or restore sources, progress, and reader settings.</p>
   <div class="backup-controls">
     <button class="btn" onclick={onExport}>Export Data</button>
     <label class="btn" class:disabled={importBusy}>
       {importBusy ? 'Importing…' : 'Import Data'}
-      <input type="file" accept="application/json" onchange={onImportBackup} hidden disabled={importBusy} />
+      <input type="file" accept="application/json" onchange={(e) => (confirm = { action: 'importBackup', onConfirm: () => { onImportBackup(e); confirm = null; } })} hidden disabled={importBusy} />
     </label>
   </div>
   {#if backupMsg}
@@ -530,34 +544,34 @@
 </div>
 
 <style>
-  .sec { margin-bottom: var(--gap); }
-  .sec h2 { font-size: 16px; font-weight: 600; margin: 0 0 6px; }
+  .sec { margin-bottom: 14px; padding: 14px; }
+  .sec h2 { font-size: 15px; font-weight: 740; margin: 0 0 4px; }
   .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
   .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .inp { flex: 1; min-width: 220px; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
-  .msg { font-size: 13px; margin-top: 8px; border-radius: var(--radius-sm); padding: 10px 12px; background: color-mix(in srgb, var(--accent) 12%, transparent); border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent); }
-  .ok { background: color-mix(in srgb, var(--accent) 12%, transparent); border-color: color-mix(in srgb, var(--accent) 26%, transparent); }
-  .warn { background: color-mix(in srgb, #e8b04f 12%, transparent); border-color: color-mix(in srgb, #e8b04f 26%, transparent); }
-  .errbox { background: color-mix(in srgb, var(--danger) 12%, transparent); border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger); }
+  .inp { flex: 1; min-width: 220px; min-height: var(--control-h); padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
+  .msg { font-size: 13px; margin-top: 8px; border-radius: var(--radius-sm); padding: 9px 11px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent); }
+  .ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 30%, transparent); }
+  .warn { background: color-mix(in srgb, var(--warning) 12%, transparent); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
+  .errbox { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger); }
   .saved-banner { margin-top: 10px; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
   .saved-copy { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
   .saved-copy strong { font-size: 14px; }
   .saved-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
   .summary { color: var(--muted); font-size: 12px; margin-top: 10px; }
   .slist { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-  .srow { display: flex; align-items: center; gap: 12px; padding: 10px 12px; background: var(--elevated); border: 1px solid var(--border); border-radius: var(--radius-sm); }
+  .srow { display: flex; align-items: center; gap: 12px; padding: 9px 10px; background: color-mix(in srgb, var(--elevated) 72%, transparent); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
   .srow.saved { border-color: color-mix(in srgb, var(--accent) 58%, var(--border)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
   .sinfo { flex: 1; min-width: 0; }
   .sname { font-weight: 550; font-size: 14px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
   .smeta { color: var(--muted); font-size: 12px; word-break: break-all; }
   .snote { color: var(--text); font-size: 12px; margin-top: 4px; }
-  .tag { background: var(--accent); color: #fff; border-radius: 4px; padding: 0 6px; font-size: 11px; margin-left: 4px; }
-  .saved-pill { background: color-mix(in srgb, var(--accent) 18%, transparent); color: #b6d7ff; border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 999px; padding: 1px 7px; font-size: 11px; }
+  .tag { background: var(--accent); color: #17110a; border-radius: 999px; padding: 0 7px; font-size: 11px; margin-left: 4px; }
+  .saved-pill { background: var(--accent-soft); color: color-mix(in srgb, var(--accent) 78%, white); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 999px; padding: 1px 7px; font-size: 11px; }
   .state { border-radius: 999px; padding: 1px 7px; font-size: 11px; border: 1px solid transparent; }
-  .state.ready { background: color-mix(in srgb, #37c178 14%, transparent); border-color: color-mix(in srgb, #37c178 34%, transparent); color: #92e4b5; }
-  .state.needs-config { background: color-mix(in srgb, #e8b04f 14%, transparent); border-color: color-mix(in srgb, #e8b04f 32%, transparent); color: #f3cb7e; }
-  .state.unreachable { background: color-mix(in srgb, var(--danger) 14%, transparent); border-color: color-mix(in srgb, var(--danger) 34%, transparent); color: #f6a0a0; }
-  .small { padding: 5px 10px; font-size: 13px; }
+  .state.ready { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 34%, transparent); color: color-mix(in srgb, var(--ok) 74%, white); }
+  .state.needs-config { background: color-mix(in srgb, var(--warning) 14%, transparent); border-color: color-mix(in srgb, var(--warning) 32%, transparent); color: #f3cb7e; }
+  .state.unreachable { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 34%, transparent); color: #f6a0a0; }
+  .small { min-height: 30px; padding: 0 10px; font-size: 13px; }
   .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
   .sactions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 
@@ -570,21 +584,26 @@
   .switch input { opacity: 0; width: 0; height: 0; }
   .slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: .2s; }
   .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-  .switch input:checked + .slider { background: var(--accent); }
+  .switch input:checked + .slider { background: var(--ok); }
   .switch input:checked + .slider::before { transform: translateX(16px); }
   .tracker-config { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0 50px; }
   .tracker-config .inp { min-width: 180px; flex: 1; }
+  .config-note { flex-basis: 100%; color: var(--muted); font-size: 12px; }
 
   .reader-defaults { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
   .sel-wrap { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
-  .sel { min-width: 180px; padding: 9px 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
+  .sel { min-width: 180px; min-height: var(--control-h); padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
 
   .cache-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
   .cache-info { color: var(--muted); font-size: 13px; }
 
   @media (max-width: 700px) {
-    .srow { align-items: flex-start; }
-    .sactions { width: 100%; }
+    .srow { flex-direction: column; align-items: stretch; gap: 10px; }
+    .sinfo { width: 100%; }
+    .sactions { width: 100%; justify-content: flex-end; }
+    .smeta { overflow-wrap: anywhere; word-break: normal; }
     .tracker-config { margin-left: 0; }
+    .cache-controls, .backup-controls { flex-direction: column; align-items: stretch; }
+    .cache-info { width: 100%; }
   }
 </style>

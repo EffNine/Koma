@@ -3,9 +3,12 @@ import { checkSourceUrl } from './sourceCheck';
 import type { AddedSource, Source } from './sources';
 import { friendlySourceName } from './sources';
 
-const BUILTIN_SOURCE_URLS: string[] = [];
+const BUILTIN_SOURCE_URLS = [
+  'https://comickz.co.uk/',
+  'https://api.comick.io/',
+];
 
-const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v3';
+const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v4';
 let ensureInitialSourcesPromise: Promise<void> | null = null;
 
 export async function ensureInitialSources(): Promise<void> {
@@ -19,14 +22,12 @@ export async function ensureInitialSources(): Promise<void> {
       try { await db.sources.delete(id); } catch { /* ignore */ }
     }
 
-    // Only seed if no sources exist yet
-    const existing = await db.sources.count();
-    if (existing > 0) {
-      window.localStorage.setItem(INITIAL_SOURCES_KEY, '1');
-      return;
-    }
     for (const url of BUILTIN_SOURCE_URLS) {
-      await addBuiltInSource(url);
+      const host = new URL(url).host;
+      const existing = await db.sources.get(host);
+      if (!existing) {
+        await addBuiltInSource(url);
+      }
     }
     window.localStorage.setItem(INITIAL_SOURCES_KEY, '1');
   })();

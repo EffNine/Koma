@@ -1,6 +1,6 @@
 # ADR 0001 — Ship a generic scraping engine; sources stay user-declared
 
-- **Status:** Accepted
+- **Status:** Superseded by ADR 0003
 - **Date:** 2026-06-28
 
 ## Context

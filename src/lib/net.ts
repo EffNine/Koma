@@ -70,3 +70,14 @@ export async function fetchBytes(
 ): Promise<Uint8Array> {
   return bytesOf(await fetchRaw(url, opts));
 }
+export async function fetchJson<T = unknown>(
+  url: string,
+  opts?: { referer?: string; headers?: Record<string, string> },
+): Promise<T> {
+  const text = await fetchText(url, opts);
+  try {
+    return JSON.parse(text) as T;
+  } catch {
+    throw new Error(`Invalid JSON from ${url}: ${text.slice(0, 200)}`);
+  }
+}

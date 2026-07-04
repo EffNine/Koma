@@ -6,12 +6,14 @@ export interface PresetConfig {
   chapter: { pages: string; imgAttr: string[] };
 }
 
+import type { DriverId } from './driver';
+
 export interface Preset {
   id: string;
   name: string;
   hosts?: string[];
   detect: RegExp;
-  driver?: 'html' | 'mangadex';
+  driver?: DriverId;
   config?: PresetConfig;
 }
 
@@ -69,7 +71,7 @@ export const mangaDex: Preset = {
   name: 'MangaDex',
   hosts: ['mangadex.org'],
   detect: /MangaDex|Unsupported Browser/i,
-  driver: 'mangadex',
+  driver: 'html', // MangaDex preset currently uses the HTML driver (no dedicated API driver yet)
 };
 
 export const asura: Preset = {
@@ -199,7 +201,23 @@ export const wpManga: Preset = {
   },
 };
 
-export const PRESETS: Preset[] = [madara, mangaReader, asura, mangaFire, mangaStream, genkan, wpManga];
+export const comick: Preset = {
+  id: 'comick',
+  name: 'ComicK (HTML + API hybrid)',
+  hosts: ['comickz.co.uk'],
+  detect: /ComicK|comickz\.co\.uk/i,
+  driver: 'comick',
+};
+
+export const comickApi: Preset = {
+  id: 'comick-api',
+  name: 'ComicK API (direct api.comick.io)',
+  hosts: ['api.comick.io'],
+  detect: /api\.comick\.io/i,
+  driver: 'comick-api',
+};
+
+export const PRESETS: Preset[] = [madara, mangaReader, asura, mangaFire, mangaStream, genkan, wpManga, comick, comickApi];
 
 export function presetById(id?: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id);

@@ -7,6 +7,9 @@ export type EmptyStateId =
   | 'updates'
   | 'browse'
   | 'reader-failed'
+  | 'reader-loading'
+  | 'tracker'
+  | 'backup'
   | 'generic';
 
 export interface EmptyStateAction {
@@ -70,6 +73,22 @@ export function emptyState(id: EmptyStateId, context?: string): EmptyStateConten
       return {
         title: 'Unable to load chapter',
         body: context || 'The chapter could not be loaded. You can retry or try another source.',
+      };
+    case 'reader-loading':
+      return {
+        title: 'Loading chapter…',
+        body: context || 'Please wait while the chapter is prepared.',
+      };
+    case 'tracker':
+      return {
+        title: 'No trackers connected',
+        body: 'Connect a tracker in Settings to sync your reading progress.',
+        action: { label: 'Manage Trackers', href: '/settings', variant: 'primary' },
+      };
+    case 'backup':
+      return {
+        title: 'No backup data',
+        body: 'Export your data to create a backup file you can import later.',
       };
     case 'generic':
     default:

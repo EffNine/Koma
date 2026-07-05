@@ -53,6 +53,24 @@ Koma already has a useful base:
 
 The next improvements should build on those systems rather than replace them.
 
+## Current Status - 2026-07-05 Handoff
+
+Several roadmap items are now implemented and verified:
+
+- Source health, fallback ranking, and reader recovery primitives are in place.
+- Continue Reading/home derivation, library grouping, title preferences, tracker sync, empty states, feedback, confirmation, and formatting helpers are covered by tests.
+- Settings, Search, and Reader have started moving from large route files into focused components.
+- ComicK browse/search is now modeled as a source feed, not as catalog identity or generic scraper UI.
+
+Latest verified commands:
+
+```sh
+pnpm run typecheck
+pnpm test
+```
+
+Both passed on 2026-07-05 after the reader chrome extraction.
+
 ## Current Gaps
 
 The largest product gaps are:
@@ -483,14 +501,54 @@ Shippable when:
 
 ## Recommended Next Slice
 
-Start with Phase 1A:
+Continue architecture cleanup before adding new product surface:
 
-1. Create the source health model and Dexie table.
-2. Add pure source ranking helpers.
-3. Add tests for ranking and health updates.
-4. Wire health recording into chapter resolution and page loading.
+1. Extract `ReaderLoadingState.svelte`.
+2. Extract `ReaderErrorState.svelte`.
+3. Extract `ReaderWarningBox.svelte`.
+4. Keep chapter/session loading and page rendering in `Reader.svelte` until the UI-only states are isolated.
 
-After that, ship Phase 1B as a user-visible recovery slice in the reader and media pages.
+This is the safest next reduction because it removes UI clutter without changing the reader pipeline.
+
+After that, revisit the still-open product work:
+
+- command search overlay,
+- Home dashboard ranked strips,
+- Categories topbar shortcut menu,
+- live Cloudflare/source reliability verification.
+
+---
+
+## Architecture Cleanup Notes
+
+Completed 2026-07-05.
+
+### Search and source feeds
+
+- Added `src/lib/sourceFeeds/types.ts` and `src/lib/sourceFeeds/comick.ts`.
+- Kept `src/lib/scraper/comickBrowse.ts` as a compatibility shim.
+- Added `src/lib/components/SourceFeedCard.svelte`.
+- Split Search UI into `SearchFilters`, `SearchResults`, and `SearchSortTabs`.
+- Added `src/lib/search/searchRouteState.ts` for testable search URL parsing/building.
+- Added `tests/source-feed.test.ts` and `tests/search-route-state.test.ts`.
+
+### Media and reader orchestration
+
+- Added `src/lib/media/openTitleCandidate.ts`.
+- Added `src/lib/media/titleChapterSource.ts`.
+- Added `src/lib/reader/chapterSession.ts`.
+- Added tests for each helper.
+
+### Settings and reader UI
+
+- Split Settings into focused components under `src/lib/components/settings/`.
+- Extracted reader chrome/toolbar/shortcut UI into `src/lib/components/reader/ReaderChrome.svelte`.
+
+### Verification
+
+- `pnpm run typecheck`: 0 errors, 0 warnings.
+- `pnpm test`: all checks pass.
+- Browser smoke covered Search, Genres, Settings, and Reader chrome.
 
 ---
 

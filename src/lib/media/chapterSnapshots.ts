@@ -28,6 +28,7 @@ export interface UnreadUpdate {
   latestChapterTitle: string | null;
   latestGroup?: string;
   progressChapter?: string;
+  newChapterCount?: number;
   checkedAt: number;
 }
 
@@ -114,6 +115,12 @@ export async function computeUnreadUpdates(
     const latestValue = Number.parseFloat(latestNumber);
 
     if (Number.isFinite(latestValue) && latestValue > progressValue) {
+      // Count how many new chapters since progress
+      let newCount = 0;
+      for (const g of grouped) {
+        const n = g.number ? Number.parseFloat(g.number) : NaN;
+        if (Number.isFinite(n) && n > progressValue) newCount++;
+      }
       updates.push({
         mediaId: title.mediaId,
         name: title.name,
@@ -122,6 +129,7 @@ export async function computeUnreadUpdates(
         latestChapterTitle: latest.title,
         latestGroup: latest.preferred.group,
         progressChapter: progress?.chapterNumber,
+        newChapterCount: newCount,
         checkedAt: snapshot.checkedAt,
       });
     }

@@ -37,6 +37,27 @@ These notes capture the ComicK reference investigation without changing the acti
    - Add page placeholders, loaded count, failed-page retry, source fallback messaging, and resume notice.
    - Surface whether Koma is resolving, retrying, switching sources, or blocked by Cloudflare.
 
+## Implementation Status - 2026-07-05
+
+Completed during the cleanup pass:
+
+- ComicK discovery is now behind a provider-neutral source-feed boundary in `src/lib/sourceFeeds/`.
+- `src/lib/scraper/comickBrowse.ts` is a compatibility shim; new code should import from `src/lib/sourceFeeds/comick.ts`.
+- Search and Genres use `comickSourceFeed` and `SourceFeedTitle`.
+- Source-feed title cards now open through AniList media resolution instead of routing back into Search.
+- Search was split into focused components under `src/lib/components/search/`.
+- Search URL parsing/building is tested in `src/lib/search/searchRouteState.ts`.
+- Reader chrome/toolbar/shortcut UI was extracted to `src/lib/components/reader/ReaderChrome.svelte`.
+- Settings was split into focused components under `src/lib/components/settings/`.
+
+Still open:
+
+- Command search overlay (`Cmd/Ctrl+K`).
+- Home dashboard ranked strips with time filters.
+- Categories topbar shortcut menu.
+- More reader render-state extraction from `Reader.svelte`.
+- Live verification against Cloudflare Unlock plus multiple real sources.
+
 ## Avoid
 
 - Do not copy ads, public notices, login pressure, or public comment/follow feeds.

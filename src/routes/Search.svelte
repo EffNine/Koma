@@ -1,123 +1,195 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
-  import { search } from '../lib/catalog/anilist';
-  import type { Title } from '../lib/catalog/types';
-  import TitleCard from '../lib/components/TitleCard.svelte';
-  import EmptyState from '../lib/components/EmptyState.svelte';
+  import { onMount, untrack } from 'svelte';
   import { route, go } from '../lib/router';
-  import { getSource } from '../lib/scraper/sources';
-  import { getChapters } from '../lib/scraper/scraper';
+  import SearchFilters from '../lib/components/search/SearchFilters.svelte';
+  import SearchResults from '../lib/components/search/SearchResults.svelte';
+  import SearchSortTabs from '../lib/components/search/SearchSortTabs.svelte';
+  import { titleCandidateRoute } from '../lib/media/openTitleCandidate';
+  import {
+    hasSearchRouteState,
+    parseSearchRouteParams,
+    searchRoutePath,
+    type SearchRouteState,
+  } from '../lib/search/searchRouteState';
+  import {
+    comickSourceFeed,
+    sourceFeedGenreSlug,
+  } from '../lib/sourceFeeds/comick';
+  import type { SourceFeedTitle } from '../lib/sourceFeeds/types';
 
+  // ── Search state ────────────────────────────────────────────────────
   let q = $state('');
   let inputEl = $state<HTMLInputElement | null>(null);
-  let titles = $state<Title[]>([]);
+
+  // ── Filter state ──────────────────────────────────────────────────
+  let selectedGenres = $state<string[]>([]);
+  let excludedGenres = $state<string[]>([]);
+  let country = $state('');
+  let sort = $state('created_at');
+  let status = $state('');
+  let time = $state('');
+  let showFilters = $state(false);
+
+  // ── Results ───────────────────────────────────────────────────────
+  let results = $state<SourceFeedTitle[]>([]);
   let loading = $state(false);
   let err = $state('');
-  let done = $state(false);
-  let comickUrl = $state('');
-  let comickTitle = $state('');
-  let comickChapters = $state<{ url: string; label: string }[]>([]);
-  let comickLoading = $state(false);
+  let openErr = $state('');
+  let hasSearched = $state(false);
+  let navigatingTo = $state('');
+
+  let paramsFromRoute = $derived.by(() => {
+    $route;
+    return parseSearchRouteParams(location.hash);
+  });
+
+  function applyRouteState(state: SearchRouteState) {
+    if (state.selectedGenres.length > 0) selectedGenres = state.selectedGenres;
+    if (state.status) status = state.status;
+    if (state.country) country = state.country;
+    if (state.time) time = state.time;
+    if (state.sort) sort = state.sort;
+    if (state.q && !q) q = state.q;
+  }
+
+  $effect(() => {
+    const routeState = paramsFromRoute;
+    if (!hasSearchRouteState(routeState)) return;
+    untrack(() => {
+      applyRouteState(routeState);
+      void run();
+    });
+  });
+
+  function clearFilters() {
+    selectedGenres = [];
+    excludedGenres = [];
+    country = '';
+    status = '';
+    time = '';
+  }
 
   async function run() {
     const query = q.trim();
-    if (!query) { titles = []; done = false; return; }
-    loading = true; err = ''; done = false; comickUrl = ''; comickTitle = ''; comickChapters = [];
-    try { titles = await search(query); }
-    catch (e) { err = String(e); titles = []; }
-    finally { loading = false; done = true; }
-    if (titles.length === 0 && comickUrl) {
-      await loadComickChapters();
-    }
-  }
-
-  async function loadComickChapters() {
-    if (!comickUrl) return;
-    comickLoading = true;
+    loading = true; err = ''; openErr = ''; hasSearched = true;
     try {
-      const ck = await getSource('comickz.co.uk');
-      if (ck) {
-        const chs = await getChapters(ck, comickUrl);
-        comickChapters = chs.slice(0, 20).map((ch) => ({
-          url: ch.url,
-          label: ch.title || `Chapter ${ch.number}`,
-        }));
-      }
-    } catch { /* non-critical */ }
-    finally { comickLoading = false; }
-  }
-
-  function routeQuery(): string {
-    const raw = location.hash.replace(/^#/, '');
-    const [, params = ''] = raw.split('?');
-    const sp = new URLSearchParams(params);
-    if (sp.get('source') === 'comick' && sp.get('url')) {
-      comickUrl = sp.get('url')!;
-      comickTitle = sp.get('q') ?? '';
+      results = await comickSourceFeed.search({
+        q: query || undefined,
+        genres: selectedGenres.length > 0 ? selectedGenres : undefined,
+        excludeGenres: excludedGenres.length > 0 ? excludedGenres : undefined,
+        country: country || undefined,
+        sort: sort || undefined,
+        status: status || undefined,
+        time: time || undefined,
+        page: 1,
+        limit: 30,
+      });
+    } catch (e) {
+      err = String(e);
+      results = [];
+    } finally {
+      loading = false;
     }
-    return sp.get('q')?.trim() ?? '';
   }
 
-  let qFromRoute = $derived.by(() => {
-    $route;
-    return routeQuery();
-  });
-
-  $effect(() => {
-    if (!qFromRoute || qFromRoute === q.trim()) return;
-    q = qFromRoute;
+  function onSearchSubmit(e: Event) {
+    e.preventDefault();
+    go(searchRoutePath({ q, selectedGenres, country, sort, status, time }));
     void run();
-  });
+  }
+
+  async function openResult(item: SourceFeedTitle) {
+    navigatingTo = item.slug;
+    openErr = '';
+    try {
+      const result = await titleCandidateRoute(item.title);
+      if (result.kind === 'media') {
+        go(result.route);
+      } else {
+        openErr = `No AniList catalog match found for "${item.title}". Try a broader title search.`;
+      }
+    } catch (e) {
+      openErr = `Could not open "${item.title}": ${String(e)}`;
+    } finally {
+      navigatingTo = '';
+    }
+  }
 
   onMount(() => inputEl?.focus());
 </script>
 
-<form class="searchbar" onsubmit={(e) => { e.preventDefault(); run(); }}>
-  <input bind:this={inputEl} bind:value={q} placeholder="Search manga, manhwa, manhua…" />
-  <button class="btn btn-primary" type="submit">Search</button>
-</form>
+<div class="search-page">
+  <!-- Search bar -->
+  <form class="searchbar" onsubmit={onSearchSubmit}>
+    <input
+      bind:this={inputEl}
+      bind:value={q}
+      placeholder="Search manga, manhwa, manhua…"
+      class="search-input"
+    />
+    <button class="btn btn-primary" type="submit">Search</button>
+  </form>
 
-{#if err}
-  <div class="card err">{err}</div>
-{:else if loading}
-  <div class="grid">{#each Array(8) as _, i (i)}<div class="card skel"></div>{/each}</div>
-{:else if done && titles.length === 0}
-  <div class="card results-empty">
-    <EmptyState id="search" context={q} compact />
-    {#if comickChapters.length > 0}
-      <div class="empty-fallback">
-        <p>Found on ComicK — pick a chapter to start reading:</p>
-        <div class="ck-chapters">
-          {#each comickChapters as ch (ch.url)}
-            <button class="btn tiny-btn" onclick={() => go(`/reader/0/comickz.co.uk/${encodeURIComponent(comickUrl)}/${encodeURIComponent(ch.url)}`)}>
-              {ch.label}
-            </button>
-          {/each}
-        </div>
-      </div>
-    {:else if comickLoading}
-      <div class="empty-fallback"><p>Loading chapters from ComicK…</p></div>
-    {/if}
+  <SearchSortTabs bind:sort onChange={run} />
+
+  <!-- Mobile filter toggle -->
+  <button class="filter-toggle-mobile" onclick={() => (showFilters = !showFilters)}>
+    {showFilters ? '▼' : '▶'} Show Filter
+  </button>
+
+  <div class="content-layout">
+    <SearchFilters
+      visible={showFilters}
+      genres={comickSourceFeed.genres}
+      bind:selectedGenres
+      bind:excludedGenres
+      bind:country
+      bind:status
+      bind:time
+      genreSlug={sourceFeedGenreSlug}
+      onChange={run}
+      onClear={clearFilters}
+    />
+
+    <SearchResults
+      {err}
+      {loading}
+      {hasSearched}
+      query={q}
+      {results}
+      {openErr}
+      {navigatingTo}
+      onRetry={run}
+      onOpen={openResult}
+    />
   </div>
-{:else if done}
-  <div class="grid">{#each titles as t (t.id)}<TitleCard title={t} />{/each}</div>
-{:else}
-  <EmptyState id="generic" context="Search for a title to get started." />
-{/if}
+</div>
 
 <style>
-  .searchbar { display: flex; gap: 8px; margin-bottom: 18px; }
-  .searchbar input { flex: 1; max-width: 640px; min-height: 46px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; }
-  .searchbar input:focus { border-color: var(--accent); outline: none; }
-  .skel { aspect-ratio: 3/4; }
-  .results-empty { padding: 28px; }
-  .results-empty :global(.empty-state) { background: transparent; border: 0; }
-  .empty-fallback { margin-top: 16px; text-align: center; }
-  .empty-fallback p { margin: 0 0 10px; color: var(--muted); }
-  .ck-chapters { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; max-width: 500px; margin: 0 auto; }
-  .err { color: var(--danger); padding: 16px; }
+  .search-page { display: flex; flex-direction: column; gap: 12px; }
+
+  /* Search bar */
+  .searchbar { display: flex; gap: 8px; }
+  .search-input { flex: 1; max-width: 640px; min-height: 46px; padding: 0 14px; border-radius: var(--radius); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 15px; }
+  .search-input:focus { border-color: var(--accent); outline: none; }
+
+  /* Mobile filter toggle */
+  .filter-toggle-mobile {
+    display: none; min-height: 34px; padding: 0 14px; border: 1px solid var(--border);
+    background: var(--surface); color: var(--text); font-size: 13px; cursor: pointer; border-radius: var(--radius-sm);
+  }
+  @media (max-width: 768px) {
+    .filter-toggle-mobile { display: inline-flex; align-items: center; gap: 6px; }
+  }
+
+  /* Content layout: sidebar + results */
+  .content-layout { display: flex; gap: 20px; align-items: flex-start; }
+  @media (max-width: 768px) {
+    .content-layout { flex-direction: column; }
+  }
+
   @media (max-width: 560px) {
     .searchbar { flex-direction: column; }
-    .searchbar input, .searchbar .btn { width: 100%; max-width: none; }
+    .search-input, .searchbar .btn { width: 100%; max-width: none; }
   }
 </style>

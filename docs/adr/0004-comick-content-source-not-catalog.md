@@ -1,6 +1,6 @@
 # ADR 0004 — COMICK as a content source, not the catalog backbone
 
-- **Status:** Accepted
+- **Status:** Accepted; amended by ADR 0005
 - **Date:** 2026-07-05
 - **Amends:** ADR 0002
 
@@ -32,3 +32,11 @@ Keeping COMICK as one of several content sources is therefore acceptable, provid
 - **Source health matters more.** Because COMICK can fail unpredictably, the health-ranking and fallback logic becomes critical for a good reading experience.
 - **No catalog dependency on COMICK.** If COMICK disappears, only its content source breaks; search, browse, follows, progress, and tracker sync remain intact.
 - **Driver maintenance.** COMICK drivers must be updated when the site changes domains or API shape. They are reverse-engineered, not officially supported.
+
+## 2026-07-05 Amendment
+
+ADR 0005 splits ComicK-style discovery into a source-feed boundary. ComicK can now be:
+
+- a chapter/page content source through scraper drivers,
+- a browse/search source feed through `src/lib/sourceFeeds/comick.ts`,
+- but still not the catalog identity provider.

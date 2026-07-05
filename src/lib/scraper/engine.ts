@@ -49,7 +49,7 @@ function firstAttr(el: Element, attrs: string[]): string | null {
 function pickLink(root: Element, selector: string): Element | null {
   if (!selector || selector === ':scope') return root;
   if (root.matches(selector)) return root;
-  return root.querySelector(selector) as Element | null;
+  return root.querySelector(selector);
 }
 
 export function extractSeriesLinks(html: string, source: Source): ScrapedSeries[] {
@@ -58,7 +58,7 @@ export function extractSeriesLinks(html: string, source: Source): ScrapedSeries[
   const doc = parse(html);
   const out = new Map<string, ScrapedSeries>();
   for (const r of doc.querySelectorAll(cfg.search.results)) {
-    const a = pickLink(r as Element, cfg.search.link);
+    const a = pickLink(r, cfg.search.link);
     if (!a) continue;
     const href = absUrl(source.url, a.getAttribute('href'));
     if (!href) continue;
@@ -74,7 +74,7 @@ export function extractChapters(html: string, source: Source): ScrapedChapter[] 
   const doc = parse(html);
   const out = new Map<string, ScrapedChapter>();
   for (const li of doc.querySelectorAll(cfg.chapters.list)) {
-    const a = pickLink(li as Element, cfg.chapters.link);
+    const a = pickLink(li, cfg.chapters.link);
     if (!a) continue;
     const href = absUrl(source.url, a.getAttribute('href'));
     if (!href) continue;
@@ -96,7 +96,7 @@ export function extractPages(html: string, source: Source): string[] {
   const out: string[] = [];
   const seen = new Set<string>();
   for (const img of doc.querySelectorAll(cfg.chapter.pages)) {
-    const src = firstAttr(img as Element, cfg.chapter.imgAttr);
+    const src = firstAttr(img, cfg.chapter.imgAttr);
     if (src && !seen.has(src)) {
       seen.add(src);
       out.push(absUrl(source.url, src));

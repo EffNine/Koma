@@ -4,7 +4,25 @@ Each stage is a vertical slice: implement -> verify -> commit. Verification is a
 
 Ponytail (full) governs every stage: stdlib/native first, fewest files, no speculative abstraction. Every non-trivial module leaves one runnable self-check.
 
-## Current snapshot (2026-07-03)
+## Current snapshot (2026-07-05 handoff)
+
+- Overall status: the app has moved beyond the original staged build plan into cleanup and reliability-hardening.
+- Latest verified commands:
+  - `pnpm run typecheck` - passed with 0 errors and 0 warnings.
+  - `pnpm test` - passed.
+- Recent cleanup:
+  - Search, Settings, and Reader chrome were split into focused components.
+  - Search route parsing/building is now tested in `src/lib/search/searchRouteState.ts`.
+  - ComicK browse/search is now a provider-neutral source feed through `src/lib/sourceFeeds/`.
+  - `src/lib/scraper/comickBrowse.ts` remains as a compatibility shim.
+  - Reader chapter session resolution is in `src/lib/reader/chapterSession.ts`.
+  - Media title/source resolution is in `src/lib/media/titleChapterSource.ts`.
+- Browser smoke checks were run for Search, Genres, Settings, and Reader chrome after the extractions.
+- Recommended next stage of cleanup: extract reader loading/error/warning render states from `Reader.svelte`.
+
+---
+
+## Previous snapshot (2026-07-03)
 
 - Overall status: Stages 0–6 are complete. Stage 7 (PWA + Desktop builds + publish) is the only remaining stage. Multiple post-Stage-7 additions have been built.
 - **Recent additions (2026-07-02 → 2026-07-03):**

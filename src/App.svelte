@@ -7,6 +7,7 @@
   import Media from './routes/Media.svelte';
   import Reader from './routes/Reader.svelte';
   import Categories from './routes/Categories.svelte';
+  import Genres from './routes/Genres.svelte';
   import Activity from './routes/Activity.svelte';
 
   const links = [
@@ -62,6 +63,8 @@
       <Search />
     {:else if p.startsWith('/categories')}
       <Categories />
+    {:else if p.startsWith('/genres')}
+      <Genres />
     {:else if p.startsWith('/activity')}
       <Activity />
     {:else if p.startsWith('/media/')}

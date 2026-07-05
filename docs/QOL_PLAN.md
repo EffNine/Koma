@@ -31,6 +31,26 @@ This plan turns the QoL wishlist into implementation slices that can be built an
 
 The first three are the highest leverage because they directly address same-chapter/group friction and image failure recovery.
 
+## Current Status - 2026-07-05 Handoff
+
+Most QoL phases in this plan have been implemented:
+
+- Preferred group per title is persisted through `src/lib/media/titlePreferences.ts`.
+- Duplicate chapter rows are grouped through `src/lib/media/chapterGroups.ts`.
+- Reader recovery controls include failed-page retry, same-number group alternatives, fallback handling, and clearer failure categories.
+- Per-title reader direction/image-fit settings are saved and applied with the correct precedence.
+- Continue Reading and followed updates are derived through `src/lib/media/continueReading.ts`.
+- Backup/export/import, cache controls, reader defaults, tracker controls, and source settings are now split into Settings subcomponents.
+- Double-page spread mode is implemented and covered by `tests/spread.test.ts`.
+
+Recent cleanup work also extracted:
+
+- Search UI components under `src/lib/components/search/`.
+- Search route parsing into `src/lib/search/searchRouteState.ts`.
+- Reader chrome UI into `src/lib/components/reader/ReaderChrome.svelte`.
+
+The remaining QoL work is mostly polish and decomposition, not core behavior.
+
 ## Phase 1 - Persistent Preferred Group Per Title
 
 ### User Story

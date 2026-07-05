@@ -7,7 +7,7 @@
   import { titleName } from '../lib/catalog/types';
   import EmptyState from '../lib/components/EmptyState.svelte';
   import { historyLabel } from '../lib/ui/formatting';
-  import { formatDateTime, timeAgo } from '../lib/util';
+  import { timeAgo } from '../lib/util';
 
   let history = $state<HistoryEntry[]>([]);
   let loading = $state(true);
@@ -31,7 +31,7 @@
             try {
               const title = await media(row.mediaId);
               if (title) names.set(row.mediaId, titleName(title));
-            } catch {}
+            } catch { /* non-critical: fallback to generic title name */ }
           }
         }
       }

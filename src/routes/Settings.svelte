@@ -3,13 +3,11 @@
   import { listSources, addByUrl, removeSource, toggleSource, importSources, recheckSource, updateSourcePriority } from '../lib/scraper/sources';
   import type { Source } from '../lib/scraper/sources';
   import {
-    ANILIST_REDIRECT_URI,
     configureAniList,
     configureMal,
     configureMangaUpdates,
     connectTracker,
     disconnectTracker,
-    isTrackerEnabled,
     listTrackers,
     setTrackerEnabled,
     type TrackerId,
@@ -23,6 +21,13 @@
   import { exportBackup, importBackup, downloadBackup } from '../lib/backup/export';
   import { getTotalCacheSize, clearAllChapterCache } from '../lib/reader/chapterCache';
   import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
+  import BackupSettings from '../lib/components/settings/BackupSettings.svelte';
+  import CacheSettings from '../lib/components/settings/CacheSettings.svelte';
+  import CloudflareSettings from '../lib/components/settings/CloudflareSettings.svelte';
+  import ReaderDefaultsSettings from '../lib/components/settings/ReaderDefaultsSettings.svelte';
+  import SourcesSettings from '../lib/components/settings/SourcesSettings.svelte';
+  import TrackerSettings from '../lib/components/settings/TrackerSettings.svelte';
+  import '../lib/components/settings/settings.css';
   import type { ConfirmActionId } from '../lib/ui/confirm';
 
   let sources = $state<Source[]>([]);
@@ -329,6 +334,70 @@
       timeStyle: 'short',
     }).format(ts)}`;
   }
+
+  function requestRemoveSource(source: Source) {
+    confirm = {
+      action: 'removeSource',
+      subject: source.name,
+      onConfirm: async () => {
+        await removeSource(source.id);
+        refresh();
+        confirm = null;
+      },
+    };
+  }
+
+  function requestClearCfCookies(host: string) {
+    confirm = {
+      action: 'clearCfCookies',
+      subject: host,
+      onConfirm: () => {
+        onClearCfCookies(host);
+        confirm = null;
+      },
+    };
+  }
+
+  function requestDisconnectTracker(tracker: TrackerAdapter) {
+    confirm = {
+      action: 'disconnectTracker',
+      subject: tracker.name,
+      onConfirm: () => {
+        onDisconnectTracker(tracker.id);
+        confirm = null;
+      },
+    };
+  }
+
+  function requestClearCatalogCache() {
+    confirm = {
+      action: 'clearCache',
+      onConfirm: () => {
+        onClearCache();
+        confirm = null;
+      },
+    };
+  }
+
+  function requestClearChapterCache() {
+    confirm = {
+      action: 'clearChapterCache',
+      onConfirm: () => {
+        onClearChapterCache();
+        confirm = null;
+      },
+    };
+  }
+
+  function requestImportBackup(event: Event) {
+    confirm = {
+      action: 'importBackup',
+      onConfirm: () => {
+        onImportBackup(event);
+        confirm = null;
+      },
+    };
+  }
 </script>
 
 <h1 class="h1">Settings</h1>
@@ -343,267 +412,72 @@
   />
 {/if}
 
-<div class="card sec">
-  <h2>Sources</h2>
-  <p class="hint">Add, check, and prioritize chapter sources.</p>
-  <form class="row" onsubmit={add}>
-    <input bind:value={urlInput} placeholder="https://manga-example.site" class="inp" />
-    <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Add & Check'}</button>
-    <label class="btn">Import JSON<input type="file" accept="application/json" onchange={onImport} hidden /></label>
-  </form>
-  {#if msg}<div class:ok={msgTone === 'ok'} class:warn={msgTone === 'warn'} class:errbox={msgTone === 'err'} class="msg">{msg}</div>{/if}
-  {#if lastSavedSource}
-    <div class="saved-banner">
-      <div class="saved-copy">
-        <strong>Saved to app</strong>
-        <span>{lastSavedSource.name} is now in your saved Sources list below.</span>
-      </div>
-      <div class="saved-meta">
-        <span>{savedAt(lastSavedSource.addedAt)}</span>
-        {#if lastSavedSource.status}<span class={`state ${lastSavedSource.status}`}>{statusLabel[lastSavedSource.status]}</span>{/if}
-      </div>
-    </div>
-  {/if}
-  <div class="summary">{sources.length} saved source{sources.length === 1 ? '' : 's'} in this app • {readyCount} ready</div>
+<SourcesSettings
+  sources={sources}
+  bind:urlInput
+  msg={msg}
+  msgTone={msgTone}
+  busy={busy}
+  checkingId={checkingId}
+  lastSavedId={lastSavedId}
+  lastSavedSource={lastSavedSource}
+  readyCount={readyCount}
+  statusLabel={statusLabel}
+  savedAt={savedAt}
+  onAdd={add}
+  onImport={onImport}
+  onToggle={toggle}
+  onCheckAgain={checkAgain}
+  onMoveUp={moveUp}
+  onMoveDown={moveDown}
+  onRemoveRequest={requestRemoveSource}
+/>
 
-  <div class="slist">
-    {#each sources as s, i (s.id)}
-      <div class:saved={s.id === lastSavedId} class="srow">
-        <div class="reorder">
-          <button class="reorder-btn" onclick={() => moveUp(s)} disabled={i === 0} title="Move up">▲</button>
-          <button class="reorder-btn" onclick={() => moveDown(s)} disabled={i >= sources.length - 1} title="Move down">▼</button>
-        </div>
-        <label class="switch">
-          <input type="checkbox" checked={s.enabled} onchange={(e) => toggle(s, e)} />
-          <span class="slider"></span>
-        </label>
-        <div class="sinfo">
-          <div class="sname">
-            {s.name}
-            {#if s.id === lastSavedId}<span class="saved-pill">Saved</span>{/if}
-            {#if s.preset}<span class="tag">{s.preset}</span>{/if}
-            {#if s.status}<span class={`state ${s.status}`}>{statusLabel[s.status]}</span>{/if}
-          </div>
-          <div class="smeta">{s.url}</div>
-          <div class="smeta">{savedAt(s.addedAt)}</div>
-          {#if s.statusNote}<div class="snote">{s.statusNote}</div>{/if}
-        </div>
-        <div class="sactions">
-          <button class="btn small" onclick={() => checkAgain(s.id)} disabled={checkingId === s.id}>{checkingId === s.id ? 'Checking…' : 'Check Again'}</button>
-          <button class="btn small" onclick={() => (confirm = { action: 'removeSource', subject: s.name, onConfirm: async () => { await removeSource(s.id); refresh(); confirm = null; } })}>Remove</button>
-        </div>
-      </div>
-    {:else}
-      <div class="empty">No sources saved yet. Add one above and the app will check it automatically.</div>
-    {/each}
-  </div>
-</div>
+<CloudflareSettings
+  bind:cfUnlockUrl
+  cfUnlockMsg={cfUnlockMsg}
+  cfUnlockTone={cfUnlockTone}
+  cfUnlockBusy={cfUnlockBusy}
+  cfCookies={cfCookies}
+  onUnlock={onUnlockCloudflare}
+  onClearCookieRequest={requestClearCfCookies}
+/>
 
-<div class="card sec">
-  <h2>Cloudflare Unlock (Desktop only)</h2>
-  <p class="hint">Store desktop cookies for sources that require a browser challenge.</p>
-  <form onsubmit={onUnlockCloudflare} class="row">
-    <input class="inp" type="url" placeholder="https://mangasite.example" bind:value={cfUnlockUrl} disabled={cfUnlockBusy} />
-    <button class="btn" type="submit" disabled={cfUnlockBusy || !cfUnlockUrl.trim()}>{cfUnlockBusy ? 'Unlocking…' : 'Unlock'}</button>
-  </form>
-  {#if cfUnlockMsg}
-    <div class:ok={cfUnlockTone === 'ok'} class:warn={cfUnlockTone === 'warn'} class:errbox={cfUnlockTone === 'err'} class="msg">{cfUnlockMsg}</div>
-  {/if}
-  {#if Object.keys(cfCookies).length > 0}
-    <div class="slist">
-      {#each Object.keys(cfCookies) as host (host)}
-        <div class="srow">
-          <div class="sinfo">
-            <div class="sname">{host} <span class="state ready">Unlocked</span></div>
-          </div>
-          <div class="sactions">
-            <button class="btn small" onclick={() => (confirm = { action: 'clearCfCookies', subject: host, onConfirm: () => { onClearCfCookies(host); confirm = null; } })}>Clear</button>
-          </div>
-        </div>
-      {/each}
-    </div>
-  {/if}
-</div>
+<TrackerSettings
+  trackers={trackers}
+  trackerConns={trackerConns}
+  trackerBusy={trackerBusy}
+  trackerMsg={trackerMsg}
+  trackerMsgTone={trackerMsgTone}
+  bind:anilistClientId
+  bind:anilistClientSecret
+  bind:malClientId
+  bind:muUsername
+  bind:muPassword
+  onToggleTracker={toggleTracker}
+  onConnectTracker={onConnectTracker}
+  onDisconnectRequest={requestDisconnectTracker}
+/>
 
-<div class="card sec">
-  <h2>Trackers</h2>
-  <p class="hint">Connect external progress trackers.</p>
+<ReaderDefaultsSettings
+  readerSettings={readerSettings}
+  directionLabel={directionLabel}
+  onDirectionChange={onReaderDirectionChange}
+/>
 
-  {#if trackerMsg}
-    <div class:ok={trackerMsgTone === 'ok'} class:warn={trackerMsgTone === 'warn'} class:errbox={trackerMsgTone === 'err'} class="msg">{trackerMsg}</div>
-  {/if}
+<CacheSettings
+  cacheSize={cacheSize}
+  chapterCacheSize={chapterCacheSize}
+  cacheMsg={cacheMsg}
+  chapterCacheMsg={chapterCacheMsg}
+  onClearCatalog={requestClearCatalogCache}
+  onClearChapter={requestClearChapterCache}
+/>
 
-  <div class="slist">
-    {#each trackers as t (t.id)}
-      {@const conn = trackerConns[t.id]}
-      {@const connected = !!conn?.token}
-      {@const enabled = conn?.enabled ?? false}
-      {@const busy = trackerBusy[t.id] ?? false}
-      <div class="srow">
-        <label class="switch">
-          <input type="checkbox" checked={enabled} onchange={(e) => toggleTracker(t.id, e)} />
-          <span class="slider"></span>
-        </label>
-        <div class="sinfo">
-          <div class="sname">
-            {t.name}
-            {#if connected}
-              <span class="state ready">Connected{conn?.userName ? ` • ${conn.userName}` : ''}</span>
-            {:else if enabled}
-              <span class="state needs-config">Enabled, not connected</span>
-            {:else}
-              <span class="state unreachable">Disabled</span>
-            {/if}
-          </div>
-          <div class="smeta">{t.id}</div>
-        </div>
-        <div class="sactions">
-          {#if connected}
-            <button class="btn small" onclick={() => (confirm = { action: 'disconnectTracker', subject: t.name, onConfirm: () => { onDisconnectTracker(t.id); confirm = null; } })} disabled={busy}>{busy ? 'Working…' : 'Disconnect'}</button>
-          {:else}
-            <button class="btn small" onclick={() => onConnectTracker(t.id)} disabled={busy}>{busy ? 'Working…' : 'Connect'}</button>
-          {/if}
-        </div>
-      </div>
-
-      {#if t.id === 'anilist'}
-        <div class="tracker-config">
-          <input bind:value={anilistClientId} placeholder="AniList client id" class="inp" />
-          <input bind:value={anilistClientSecret} type="password" placeholder="Client secret" class="inp" />
-          <div class="config-note">AniList redirect URL: <code>{ANILIST_REDIRECT_URI}</code></div>
-        </div>
-      {:else if t.id === 'mal'}
-        <div class="tracker-config">
-          <input bind:value={malClientId} placeholder="MAL client id" class="inp" />
-        </div>
-      {:else if t.id === 'mangaupdates'}
-        <div class="tracker-config">
-          <input bind:value={muUsername} placeholder="MangaUpdates username" class="inp" />
-          <input bind:value={muPassword} type="password" placeholder="Password" class="inp" />
-        </div>
-      {/if}
-    {:else}
-      <div class="empty">No trackers available.</div>
-    {/each}
-  </div>
-</div>
-
-<div class="card sec">
-  <h2>Reader</h2>
-  <p class="hint">Default direction for new chapters.</p>
-  <div class="reader-defaults">
-    <label class="sel-wrap">
-      <span>Default direction</span>
-      <select class="sel" value={readerSettings.defaultDirection} onchange={onReaderDirectionChange}>
-        {#each Object.entries(directionLabel) as [val, label] (val)}
-          <option value={val}>{label}</option>
-        {/each}
-      </select>
-    </label>
-  </div>
-</div>
-
-<div class="card sec">
-  <h2>Cache</h2>
-  <p class="hint">Review local catalog and chapter storage.</p>
-  <div class="cache-controls">
-    <div class="cache-info">
-      {#if cacheSize !== null}
-        <span>{cacheSize} catalog entr{cacheSize === 1 ? 'y' : 'ies'}</span>
-      {:else}
-        <span>Loading catalog cache info…</span>
-      {/if}
-      {#if chapterCacheSize !== null}
-        <span>• {chapterCacheSize > 0 ? `${(chapterCacheSize / 1024 / 1024).toFixed(1)} MB` : '0 B'} chapter cache</span>
-      {/if}
-    </div>
-    <button class="btn" onclick={() => (confirm = { action: 'clearCache', onConfirm: () => { onClearCache(); confirm = null; } })}>Clear Catalog Cache</button>
-    <button class="btn" onclick={() => (confirm = { action: 'clearChapterCache', onConfirm: () => { onClearChapterCache(); confirm = null; } })}>Clear Chapter Cache</button>
-  </div>
-  {#if cacheMsg}
-    <div class="msg ok">{cacheMsg}</div>
-  {/if}
-  {#if chapterCacheMsg}
-    <div class="msg ok">{chapterCacheMsg}</div>
-  {/if}
-</div>
-
-<div class="card sec">
-  <h2>Backup &amp; Restore</h2>
-  <p class="hint">Export or restore sources, progress, and reader settings.</p>
-  <div class="backup-controls">
-    <button class="btn" onclick={onExport}>Export Data</button>
-    <label class="btn" class:disabled={importBusy}>
-      {importBusy ? 'Importing…' : 'Import Data'}
-      <input type="file" accept="application/json" onchange={(e) => (confirm = { action: 'importBackup', onConfirm: () => { onImportBackup(e); confirm = null; } })} hidden disabled={importBusy} />
-    </label>
-  </div>
-  {#if backupMsg}
-    <div class:ok={backupMsgTone === 'ok'} class:warn={backupMsgTone === 'warn'} class:errbox={backupMsgTone === 'err'} class="msg">{backupMsg}</div>
-  {/if}
-</div>
-
-<style>
-  .sec { margin-bottom: 14px; padding: 14px; }
-  .sec h2 { font-size: 15px; font-weight: 740; margin: 0 0 4px; }
-  .hint { color: var(--muted); font-size: 13px; margin: 0 0 12px; }
-  .row { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-  .inp { flex: 1; min-width: 220px; min-height: var(--control-h); padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
-  .msg { font-size: 13px; margin-top: 8px; border-radius: var(--radius-sm); padding: 9px 11px; background: var(--accent-soft); border: 1px solid color-mix(in srgb, var(--accent) 26%, transparent); }
-  .ok { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 30%, transparent); }
-  .warn { background: color-mix(in srgb, var(--warning) 12%, transparent); border-color: color-mix(in srgb, var(--warning) 26%, transparent); }
-  .errbox { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 30%, transparent); color: var(--danger); }
-  .saved-banner { margin-top: 10px; padding: 12px 14px; border-radius: var(--radius-sm); border: 1px solid color-mix(in srgb, var(--accent) 30%, transparent); background: color-mix(in srgb, var(--accent) 10%, transparent); display: flex; justify-content: space-between; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .saved-copy { display: flex; flex-direction: column; gap: 4px; font-size: 13px; }
-  .saved-copy strong { font-size: 14px; }
-  .saved-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
-  .summary { color: var(--muted); font-size: 12px; margin-top: 10px; }
-  .slist { margin-top: 14px; display: flex; flex-direction: column; gap: 8px; }
-  .srow { display: flex; align-items: center; gap: 12px; padding: 9px 10px; background: color-mix(in srgb, var(--elevated) 72%, transparent); border: 1px solid var(--border-soft); border-radius: var(--radius-sm); }
-  .srow.saved { border-color: color-mix(in srgb, var(--accent) 58%, var(--border)); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--accent) 24%, transparent); }
-  .sinfo { flex: 1; min-width: 0; }
-  .sname { font-weight: 550; font-size: 14px; display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
-  .smeta { color: var(--muted); font-size: 12px; word-break: break-all; }
-  .snote { color: var(--text); font-size: 12px; margin-top: 4px; }
-  .tag { background: var(--accent); color: #17110a; border-radius: 999px; padding: 0 7px; font-size: 11px; margin-left: 4px; }
-  .saved-pill { background: var(--accent-soft); color: color-mix(in srgb, var(--accent) 78%, white); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); border-radius: 999px; padding: 1px 7px; font-size: 11px; }
-  .state { border-radius: 999px; padding: 1px 7px; font-size: 11px; border: 1px solid transparent; }
-  .state.ready { background: var(--ok-soft); border-color: color-mix(in srgb, var(--ok) 34%, transparent); color: color-mix(in srgb, var(--ok) 74%, white); }
-  .state.needs-config { background: color-mix(in srgb, var(--warning) 14%, transparent); border-color: color-mix(in srgb, var(--warning) 32%, transparent); color: #f3cb7e; }
-  .state.unreachable { background: var(--danger-soft); border-color: color-mix(in srgb, var(--danger) 34%, transparent); color: #f6a0a0; }
-  .small { min-height: 30px; padding: 0 10px; font-size: 13px; }
-  .empty { color: var(--muted); font-size: 13px; padding: 8px 0; }
-  .sactions { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-
-  .reorder { display: flex; flex-direction: column; gap: 2px; flex-shrink: 0; }
-  .reorder-btn { background: transparent; border: 1px solid var(--border); border-radius: 4px; color: var(--muted); font-size: 10px; width: 24px; height: 20px; padding: 0; cursor: pointer; line-height: 1; }
-  .reorder-btn:hover:not([disabled]) { color: var(--text); border-color: var(--accent); }
-  .reorder-btn[disabled] { opacity: .3; cursor: not-allowed; }
-
-  .switch { position: relative; width: 38px; height: 22px; flex-shrink: 0; }
-  .switch input { opacity: 0; width: 0; height: 0; }
-  .slider { position: absolute; inset: 0; background: var(--border); border-radius: 22px; transition: .2s; }
-  .slider::before { content: ''; position: absolute; width: 16px; height: 16px; left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: .2s; }
-  .switch input:checked + .slider { background: var(--ok); }
-  .switch input:checked + .slider::before { transform: translateX(16px); }
-  .tracker-config { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 0 50px; }
-  .tracker-config .inp { min-width: 180px; flex: 1; }
-  .config-note { flex-basis: 100%; color: var(--muted); font-size: 12px; }
-
-  .reader-defaults { display: flex; gap: 12px; align-items: end; flex-wrap: wrap; }
-  .sel-wrap { display: flex; flex-direction: column; gap: 6px; color: var(--muted); font-size: 13px; }
-  .sel { min-width: 180px; min-height: var(--control-h); padding: 0 12px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 14px; }
-
-  .cache-controls { display: flex; gap: 12px; align-items: center; flex-wrap: wrap; }
-  .cache-info { color: var(--muted); font-size: 13px; }
-
-  @media (max-width: 700px) {
-    .srow { flex-direction: column; align-items: stretch; gap: 10px; }
-    .sinfo { width: 100%; }
-    .sactions { width: 100%; justify-content: flex-end; }
-    .smeta { overflow-wrap: anywhere; word-break: normal; }
-    .tracker-config { margin-left: 0; }
-    .cache-controls, .backup-controls { flex-direction: column; align-items: stretch; }
-    .cache-info { width: 100%; }
-  }
-</style>
+<BackupSettings
+  backupMsg={backupMsg}
+  backupMsgTone={backupMsgTone}
+  importBusy={importBusy}
+  onExport={onExport}
+  onImportRequest={requestImportBackup}
+/>

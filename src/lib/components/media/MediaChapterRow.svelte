@@ -21,7 +21,7 @@
     onMarkUnread: (num: string | null) => void;
   } = $props();
 
-  const c = group.preferred;
+  let c = $derived(group.preferred);
 </script>
 
 <div class="chapter-row" id={group.number ? `ch-${group.number}` : ''} class:read={group.number ? readChapters.has(group.number) : false}>

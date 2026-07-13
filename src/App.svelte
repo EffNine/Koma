@@ -9,6 +9,7 @@
   import Categories from './routes/Categories.svelte';
   import Genres from './routes/Genres.svelte';
   import Activity from './routes/Activity.svelte';
+  import CommandSearch from './lib/components/CommandSearch.svelte';
 
   const links = [
     { href: '/', label: 'Home' },
@@ -34,6 +35,19 @@
     if (searchQ.trim()) {
       go(`/search?q=${encodeURIComponent(searchQ.trim())}`);
       searchQ = '';
+    }
+  }
+
+  // ── Command search (Cmd/Ctrl+K) ──────────────────────────────────
+  let showCommandSearch = $state(false);
+
+  function onGlobalKeydown(e: KeyboardEvent) {
+    if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+      e.preventDefault();
+      showCommandSearch = !showCommandSearch;
+    }
+    if (e.key === 'Escape' && showCommandSearch) {
+      showCommandSearch = false;
     }
   }
 </script>
@@ -80,3 +94,6 @@
     {/if}
   </main>
 </div>
+
+<svelte:window onkeydown={onGlobalKeydown} />
+<CommandSearch show={showCommandSearch} onClose={() => { showCommandSearch = false; }} />

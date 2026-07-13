@@ -73,6 +73,8 @@
   let resumedFromPage = $state(0);
   let toast = $state<{ text: string; tone: 'ok' | 'err' } | null>(null);
   let showChrome = $state(false);
+  let chromeAutoShow = $state(false);
+  let hideTimeout: ReturnType<typeof setTimeout> | undefined;
   let showShortcuts = $state(false);
   let isFullscreen = $state(false);
 
@@ -291,6 +293,7 @@
 
   onDestroy(() => {
     clearTimeout(persistTimer);
+    clearTimeout(hideTimeout);
     observer?.disconnect();
     abortController?.abort();
     preloadAbort?.abort();
@@ -437,6 +440,29 @@
         pageNodes.delete(index);
       },
     };
+  }
+
+  function onReaderMouseMove(e: MouseEvent) {
+    if (showChrome) return;
+    const nearTop = e.clientY < 60;
+    if (nearTop) {
+      clearTimeout(hideTimeout);
+      hideTimeout = undefined;
+      chromeAutoShow = true;
+    } else if (chromeAutoShow) {
+      clearTimeout(hideTimeout);
+      hideTimeout = setTimeout(() => {
+        chromeAutoShow = false;
+      }, 1200);
+    }
+  }
+
+  function onReaderMouseLeave() {
+    if (showChrome) return;
+    clearTimeout(hideTimeout);
+    hideTimeout = setTimeout(() => {
+      chromeAutoShow = false;
+    }, 400);
   }
 
   function setDirection(next: ReaderDirection) {
@@ -615,7 +641,7 @@
 
 <svelte:window onkeydown={onKeyDown} />
 
-<div class="reader-shell" class:chrome-open={showChrome} style="--reader-brightness: {brightness}%; --reader-contrast: {contrast}%; --reader-zoom: {zoom}">
+<div class="reader-shell" class:chrome-open={showChrome} class:chrome-auto={chromeAutoShow} style="--reader-brightness: {brightness}%; --reader-contrast: {contrast}%; --reader-zoom: {zoom}" onmousemove={onReaderMouseMove} onmouseleave={onReaderMouseLeave}>
   <button class="chrome-toggle" onclick={() => (showChrome = !showChrome)} aria-label="Toggle reader controls">
     {showChrome ? '✕' : '☰'}
   </button>
@@ -767,16 +793,7 @@
     position: fixed; top: 52px; right: 10px; z-index: 55;
     max-width: min(320px, calc(100vw - 20px));
   }
-  /* Hover zone at top of reader-shell triggers chrome */
-  .reader-shell::before {
-    content: '';
-    position: fixed;
-    top: 0;
-    left: 0;
-    right: 0;
-    height: 50px;
-    z-index: 49;
-  }
+
   .reader-shell.chrome-open .chrome-toggle {
     background: var(--surface);
   }

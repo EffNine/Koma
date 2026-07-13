@@ -123,19 +123,19 @@ try {
     await goto('/#/search');
     await page.fill('.searchbar input[placeholder*="Search"]', 'One Piece');
     await page.click('.searchbar button[type="submit"]');
-    await page.locator('.tcard, .empty, .err').first().waitFor({ timeout: 20000 });
+    await page.locator('.source-card, .empty, .err').first().waitFor({ timeout: 20000 });
   });
 
   await step('search-route-query', async () => {
     await goto('/#/search?q=One%20Piece');
     await page.locator('.searchbar input').waitFor({ timeout: 5000 });
-    await page.locator('.tcard, .empty, .err').first().waitFor({ timeout: 20000 });
+    await page.locator('.source-card, .empty, .err').first().waitFor({ timeout: 20000 });
     const value = await page.locator('.searchbar input').inputValue();
     if (value !== 'One Piece') throw new Error(`Search route query was not reflected in input, got "${value}"`);
   });
 
   await step('media', async () => {
-    await page.click('.tcard');
+    await page.click('.source-card');
     await page.waitForTimeout(2000);
   });
 

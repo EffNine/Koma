@@ -291,7 +291,7 @@
     pointer-events: none;
     transition: opacity .2s ease;
   }
-  :global(.reader-shell:hover) .reader-chrome,
+  :global(.reader-shell.chrome-auto) .reader-chrome,
   :global(.reader-shell.chrome-open) .reader-chrome {
     opacity: 1;
     pointer-events: auto;

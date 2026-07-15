@@ -1,6 +1,6 @@
 # Koma
 
-A cozy manga and comic reader for desktop and browser.
+A cozy manga and comic reader.
 
 Koma helps you track what you're reading, discover new titles through AniList, and read chapters from manga sites you add yourself. It's a reader and tracker in one — no account needed, no cloud dependency, just your local library.
 

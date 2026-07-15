@@ -389,6 +389,8 @@
     };
   }
 
+  const APP_VERSION = '0.1.0';
+
   function requestImportBackup(event: Event) {
     confirm = {
       action: 'importBackup',
@@ -481,3 +483,12 @@
   onExport={onExport}
   onImportRequest={requestImportBackup}
 />
+
+<section class="section version-info">
+  <p class="version-text">Koma v{APP_VERSION}</p>
+</section>
+
+<style>
+  .version-info { margin-top: 32px; text-align: center; }
+  .version-text { font-size: 12px; color: var(--muted-2); }
+</style>

@@ -4,6 +4,7 @@ import { DRIVERS, driverFor, registerDriver, type ScraperDriver } from '../src/l
 import { htmlDriver } from '../src/lib/scraper/htmlDriver.ts';
 import { comickDriver } from '../src/lib/scraper/comickDriver.ts';
 import { comickApiDriver } from '../src/lib/scraper/comickApiDriver.ts';
+import { mangaDexDriver } from '../src/lib/scraper/mangaDexDriver.ts';
 import { db } from '../src/lib/db.ts';
 import { exportSources, importSources, type Source } from '../src/lib/scraper/sources.ts';
 
@@ -30,14 +31,17 @@ await resetDb();
 assert(DRIVERS.html === htmlDriver, 'html driver registered');
 assert(DRIVERS.comick === comickDriver, 'comick driver registered');
 assert(DRIVERS['comick-api'] === comickApiDriver, 'comick-api driver registered');
+assert(DRIVERS.mangadex === mangaDexDriver, 'mangadex driver registered');
 
 const htmlSource: Source = { id: 'html.example', name: 'HTML', url: 'https://html.example/', preset: 'madara', enabled: true, priority: 0, addedAt: 0 };
 const comickSource: Source = { id: 'comickz.co.uk', name: 'ComicK', url: 'https://comickz.co.uk/', preset: 'comick', enabled: true, priority: 0, addedAt: 0 };
 const comickApiSource: Source = { id: 'api.comick.io', name: 'ComicK API', url: 'https://api.comick.io/', preset: 'comick-api', enabled: true, priority: 0, addedAt: 0 };
+const mangadexSource: Source = { id: 'mangadex.org', name: 'MangaDex', url: 'https://mangadex.org/', preset: 'mangadex', enabled: true, priority: 0, addedAt: 0 };
 
 assert(driverFor(htmlSource) === htmlDriver, 'driverFor resolves html preset');
 assert(driverFor(comickSource) === comickDriver, 'driverFor resolves comick preset');
 assert(driverFor(comickApiSource) === comickApiDriver, 'driverFor resolves comick-api preset');
+assert(driverFor(mangadexSource) === mangaDexDriver, 'driverFor resolves mangadex preset');
 
 let called = false;
 const testDriver: ScraperDriver = {

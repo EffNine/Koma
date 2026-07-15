@@ -35,6 +35,24 @@ const mangaFire: Source = {
   addedAt: 0,
 };
 
+const mangaPill: Source = {
+  id: 'mangapill.com',
+  name: 'MangaPill',
+  url: 'https://mangapill.com/',
+  preset: 'mangapill',
+  enabled: true,
+  addedAt: 0,
+};
+
+const weebCentral: Source = {
+  id: 'weebcentral.com',
+  name: 'WeebCentral',
+  url: 'https://weebcentral.com/',
+  preset: 'weebcentral',
+  enabled: true,
+  addedAt: 0,
+};
+
 let failures = 0;
 function assert(cond: boolean, msg: string) {
   if (!cond) { console.error('FAIL: ' + msg); failures++; }
@@ -133,6 +151,86 @@ const mangaFireChapters = extractChapters(
 );
 assert(mangaFireChapters.length === 2, 'mangafire chapter selectors find chapter list');
 assert(mangaFireChapters[0].number === '1', 'mangafire chapters are sorted ascending');
+
+// ── MangaPill preset ──
+const mangaPillSearch = extractSeriesLinks(
+  `
+  <a href="/manga/2/one-piece" class="relative block">
+    <h2 class="font-bold">One Piece</h2>
+  </a>
+  <a href="/manga/3/naruto" class="relative block">
+    <h3 class="font-bold">Naruto</h3>
+  </a>
+  `,
+  mangaPill,
+);
+assert(mangaPillSearch.length === 2, 'mangapill search finds 2 series');
+assert(mangaPillSearch[0].title === 'One Piece', 'mangapill search extracts title');
+
+const mangaPillChapters = extractChapters(
+  `
+  <div id="chapters">
+    <a href="/chapters/2-11186000/one-piece-chapter-1186">Chapter 1186</a>
+    <a href="/chapters/2-11185000/one-piece-chapter-1185">Chapter 1185</a>
+  </div>
+  `,
+  mangaPill,
+);
+assert(mangaPillChapters.length === 2, 'mangapill chapter selectors find chapters');
+assert(mangaPillChapters[0].number === '1185', 'mangapill chapters sorted ascending');
+
+const mangaPillPages = extractPages(
+  `
+  <img class="js-page" data-src="https://cdn.readdetectiveconan.com/file/mangapill/1.webp" />
+  <img class="js-page" data-src="https://cdn.readdetectiveconan.com/file/mangapill/2.webp" />
+  `,
+  mangaPill,
+);
+assert(mangaPillPages.length === 2, 'mangapill page selectors find images');
+assert(mangaPillPages[0].includes('1.webp'), 'mangapill page uses data-src');
+
+// ── WeebCentral preset ──
+const weebCentralSearch = extractSeriesLinks(
+  `
+  <article>
+    <a href="/series/01J76XY123/solo-leveling" class="link">
+      <span data-tip="Solo Leveling">Solo Leveling</span>
+    </a>
+  </article>
+  <article>
+    <a href="/series/01J76XY456/one-piece" class="link">
+      <span data-tip="One Piece">One Piece</span>
+    </a>
+  </article>
+  `,
+  weebCentral,
+);
+assert(weebCentralSearch.length === 2, 'weebcentral search finds 2 series');
+assert(weebCentralSearch[0].title === 'Solo Leveling', 'weebcentral search extracts title');
+
+const weebCentralChapters = extractChapters(
+  `
+  <a href="/chapters/01J76XY789/chapter-1">Chapter 1</a>
+  <a href="/chapters/01J76XY790/chapter-2">Chapter 2</a>
+  `,
+  weebCentral,
+);
+assert(weebCentralChapters.length === 2, 'weebcentral chapter selectors find chapters');
+assert(weebCentralChapters[0].number === '1', 'weebcentral chapters sorted ascending');
+
+const weebCentralPages = extractPages(
+  `
+  <main>
+    <section>
+      <img alt="Page 1" src="https://cdn.weebcentral.com/page1.webp" />
+      <img alt="Page 2" src="https://cdn.weebcentral.com/page2.webp" />
+    </section>
+  </main>
+  `,
+  weebCentral,
+);
+assert(weebCentralPages.length === 2, 'weebcentral page selectors find images');
+assert(weebCentralPages[0].includes('page1.webp'), 'weebcentral page uses src');
 
 if (failures) { console.error(`\n${failures} check(s) failed`); process.exit(1); }
 console.log('\nall scraper checks passed');

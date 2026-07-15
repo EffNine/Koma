@@ -127,6 +127,10 @@
       {/if}
       <div class="reader-meta">
         <span>{sourceName}</span>
+        {#if sourceName === 'MangaDex'}
+          <span class="meta-sep">|</span>
+          <span class="attribution">Chapters provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a> and scanlation groups.</span>
+        {/if}
         {#if sameNumberAlts.length > 0}
           <span class="meta-sep">|</span>
           <select class="group-switch" onchange={(e) => {
@@ -303,6 +307,9 @@
   .reader-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
   .reader-meta a { color: var(--muted); }
   .reader-meta a:hover { color: var(--text); }
+  .attribution { font-size: 11px; color: var(--muted-2); }
+  .attribution a { color: var(--muted-2); text-decoration: underline; }
+  .attribution a:hover { color: var(--accent); }
   .toolbar {
     display: flex; gap: 8px; justify-content: flex-start; align-items: center; flex-wrap: wrap;
     padding: 0;

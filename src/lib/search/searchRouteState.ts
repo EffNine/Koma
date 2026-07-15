@@ -1,4 +1,4 @@
-export const DEFAULT_SEARCH_SORT = 'created_at';
+export const DEFAULT_SEARCH_SORT = 'TRENDING_DESC';
 
 export interface SearchRouteState {
   q: string;
@@ -6,7 +6,6 @@ export interface SearchRouteState {
   country: string;
   sort: string;
   status: string;
-  time: string;
 }
 
 export function emptySearchRouteState(): SearchRouteState {
@@ -16,7 +15,6 @@ export function emptySearchRouteState(): SearchRouteState {
     country: '',
     sort: DEFAULT_SEARCH_SORT,
     status: '',
-    time: '',
   };
 }
 
@@ -30,7 +28,6 @@ export function parseSearchRouteParams(hash: string): SearchRouteState {
   state.selectedGenres = parseCsv(sp.get('genres'));
   state.status = sp.get('status') ?? '';
   state.country = sp.get('country') ?? '';
-  state.time = sp.get('time') ?? '';
   state.sort = sp.get('sort') || DEFAULT_SEARCH_SORT;
 
   return state;
@@ -42,7 +39,6 @@ export function hasSearchRouteState(state: SearchRouteState): boolean {
     state.selectedGenres.length > 0 ||
     state.status ||
     state.country ||
-    state.time ||
     state.sort !== DEFAULT_SEARCH_SORT,
   );
 }
@@ -55,7 +51,6 @@ export function searchRoutePath(state: SearchRouteState): string {
   if (state.selectedGenres.length > 0) params.set('genres', state.selectedGenres.join(','));
   if (state.status) params.set('status', state.status);
   if (state.country) params.set('country', state.country);
-  if (state.time) params.set('time', state.time);
   if (state.sort !== DEFAULT_SEARCH_SORT) params.set('sort', state.sort);
 
   const qs = params.toString();

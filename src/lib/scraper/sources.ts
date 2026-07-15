@@ -149,6 +149,9 @@ export function friendlySourceName(base: string): string {
   const known: Record<string, string> = {
     'comickz.co.uk': 'ComicK',
     'api.comick.io': 'ComicK API',
+    'mangadex.org': 'MangaDex',
+    'weebcentral.com': 'WeebCentral',
+    'mangapill.com': 'MangaPill',
   };
   return known[host] ?? host;
 }

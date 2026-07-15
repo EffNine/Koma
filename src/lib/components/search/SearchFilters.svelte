@@ -6,8 +6,6 @@
     excludedGenres = $bindable<string[]>([]),
     country = $bindable(''),
     status = $bindable(''),
-    time = $bindable(''),
-    genreSlug,
     onChange,
     onClear,
   }: {
@@ -17,8 +15,6 @@
     excludedGenres: string[];
     country: string;
     status: string;
-    time: string;
-    genreSlug: (genre: string) => string;
     onChange: () => void | Promise<void>;
     onClear: () => void;
   } = $props();
@@ -55,7 +51,7 @@
   }
 
   function hasActiveFilters(): boolean {
-    return selectedGenres.length > 0 || excludedGenres.length > 0 || country !== '' || status !== '' || time !== '';
+    return selectedGenres.length > 0 || excludedGenres.length > 0 || country !== '' || status !== '';
   }
 </script>
 
@@ -93,17 +89,16 @@
             </div>
             <ul class="genre-list">
               {#each genres as genre (genre)}
-                {@const slug = genreSlug(genre)}
                 <li class="genre-item">
-                  <label class="genre-checkbox-label" class:excluded={isGenreExcluded(slug)}>
+                  <label class="genre-checkbox-label" class:excluded={isGenreExcluded(genre)}>
                     <input
                       type="checkbox"
                       class="genre-checkbox"
-                      checked={isGenreSelected(slug) || isGenreExcluded(slug)}
-                      onchange={() => toggleGenre(slug)}
-                      oncontextmenu={(e) => { e.preventDefault(); excludeGenre(slug); }}
+                      checked={isGenreSelected(genre) || isGenreExcluded(genre)}
+                      onchange={() => toggleGenre(genre)}
+                      oncontextmenu={(e) => { e.preventDefault(); excludeGenre(genre); }}
                     />
-                    <span class="genre-name" class:line-through={isGenreExcluded(slug)}>{genre}</span>
+                    <span class="genre-name" class:line-through={isGenreExcluded(genre)}>{genre}</span>
                   </label>
                 </li>
               {/each}
@@ -112,19 +107,6 @@
         </div>
       {/if}
     </div>
-  </div>
-
-  <div class="filter-block">
-    <strong class="filter-heading">Time</strong>
-    <select class="filter-select" bind:value={time} onchange={onChange}>
-      <option value="">-- (All) --</option>
-      <option value="3">3 days ago</option>
-      <option value="7">7 days ago</option>
-      <option value="30">30 days ago</option>
-      <option value="90">3 months ago</option>
-      <option value="180">6 months ago</option>
-      <option value="365">1 year ago</option>
-    </select>
   </div>
 
   <div class="filter-block">

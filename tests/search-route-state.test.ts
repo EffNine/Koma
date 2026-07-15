@@ -8,33 +8,31 @@ import {
 } from '../src/lib/search/searchRouteState';
 
 assert.deepEqual(parseSearchRouteParams('#/search'), emptySearchRouteState());
-assert.deepEqual(parseSearchRouteParams('#/search?q=solo%20leveling&genres=action,long-strip&status=completed&country=kr&time=180&sort=user_follow_count'), {
+assert.deepEqual(parseSearchRouteParams('#/search?q=solo%20leveling&genres=Action,Adventure&status=completed&country=kr&sort=POPULARITY_DESC'), {
   q: 'solo leveling',
-  selectedGenres: ['action', 'long-strip'],
+  selectedGenres: ['Action', 'Adventure'],
   country: 'kr',
-  sort: 'user_follow_count',
+  sort: 'POPULARITY_DESC',
   status: 'completed',
-  time: '180',
 });
 
-assert.deepEqual(parseSearchRouteParams('#/search?genres=action,, long-strip '), {
+assert.deepEqual(parseSearchRouteParams('#/search?genres=Action,, Adventure '), {
   ...emptySearchRouteState(),
-  selectedGenres: ['action', 'long-strip'],
+  selectedGenres: ['Action', 'Adventure'],
 });
 
 assert.equal(hasSearchRouteState(emptySearchRouteState()), false);
-assert.equal(hasSearchRouteState({ ...emptySearchRouteState(), selectedGenres: ['action'] }), true);
-assert.equal(hasSearchRouteState({ ...emptySearchRouteState(), sort: 'user_follow_count' }), true);
+assert.equal(hasSearchRouteState({ ...emptySearchRouteState(), selectedGenres: ['Action'] }), true);
+assert.equal(hasSearchRouteState({ ...emptySearchRouteState(), sort: 'POPULARITY_DESC' }), true);
 
 assert.equal(searchRoutePath(emptySearchRouteState()), '/search');
 assert.equal(searchRoutePath({
   q: '  solo leveling  ',
-  selectedGenres: ['action', 'long-strip'],
+  selectedGenres: ['Action', 'Adventure'],
   country: 'kr',
-  sort: 'user_follow_count',
+  sort: 'POPULARITY_DESC',
   status: 'completed',
-  time: '180',
-}), '/search?q=solo+leveling&genres=action%2Clong-strip&status=completed&country=kr&time=180&sort=user_follow_count');
+}), '/search?q=solo+leveling&genres=Action%2CAdventure&status=completed&country=kr&sort=POPULARITY_DESC');
 
 assert.equal(searchRoutePath({
   ...emptySearchRouteState(),

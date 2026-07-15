@@ -6,9 +6,13 @@ import { friendlySourceName } from './sources';
 const BUILTIN_SOURCE_URLS = [
   'https://comickz.co.uk/',
   'https://api.comick.io/',
+  'https://mangadex.org/',
+  'https://weebcentral.com/',
+  'https://mangapill.com/',
 ];
 
-const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v4';
+const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v5';
+const OLD_SOURCE_KEYS = ['koma.sources.seeded.v4'];
 let ensureInitialSourcesPromise: Promise<void> | null = null;
 
 export async function ensureInitialSources(): Promise<void> {
@@ -16,8 +20,15 @@ export async function ensureInitialSources(): Promise<void> {
   if (window.localStorage.getItem(INITIAL_SOURCES_KEY) === '1') return;
   if (ensureInitialSourcesPromise) return ensureInitialSourcesPromise;
   ensureInitialSourcesPromise = (async () => {
-    // Remove old sources that are no longer built-in (MangaDex, Asura Scans, MangaFire)
-    const oldIds = ['mangadex.org', 'asurascans.com', 'mangafire.to'];
+    // One-time migration: if v4 was seeded, clear it so we re-seed with new sources
+    for (const oldKey of OLD_SOURCE_KEYS) {
+      if (window.localStorage.getItem(oldKey) === '1') {
+        window.localStorage.removeItem(oldKey);
+      }
+    }
+
+    // Remove old sources that are no longer built-in (Asura Scans, MangaFire)
+    const oldIds = ['asurascans.com', 'mangafire.to'];
     for (const id of oldIds) {
       try { await db.sources.delete(id); } catch { /* ignore */ }
     }

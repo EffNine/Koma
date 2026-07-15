@@ -1,6 +1,6 @@
 <script lang="ts">
   let {
-    sort = $bindable('created_at'),
+    sort = $bindable('TRENDING_DESC'),
     onChange,
   }: {
     sort: string;
@@ -14,8 +14,9 @@
 </script>
 
 <div class="sort-tabs">
-  <button class="sort-tab" class:active={sort === 'created_at'} onclick={() => selectSort('created_at')}>Latest</button>
-  <button class="sort-tab" class:active={sort === 'user_follow_count'} onclick={() => selectSort('user_follow_count')}>Popular</button>
+  <button class="sort-tab" class:active={sort === 'TRENDING_DESC'} onclick={() => selectSort('TRENDING_DESC')}>Trending</button>
+  <button class="sort-tab" class:active={sort === 'POPULARITY_DESC'} onclick={() => selectSort('POPULARITY_DESC')}>Popular</button>
+  <button class="sort-tab" class:active={sort === 'START_DATE_DESC'} onclick={() => selectSort('START_DATE_DESC')}>Latest</button>
 </div>
 
 <style>

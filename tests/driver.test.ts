@@ -43,6 +43,12 @@ assert(typeof comickApiDriver.getChapters === 'function', 'comickApiDriver has g
 assert(typeof comickApiDriver.getPages === 'function', 'comickApiDriver has getPages');
 assert(comickApiDriver.findSeries.length === 2, 'comickApiDriver.findSeries takes 2 args');
 
+// MangaDex driver
+assert(typeof mangaDexDriver.findSeries === 'function', 'mangaDexDriver has findSeries');
+assert(typeof mangaDexDriver.getChapters === 'function', 'mangaDexDriver has getChapters');
+assert(typeof mangaDexDriver.getPages === 'function', 'mangaDexDriver has getPages');
+assert(mangaDexDriver.findSeries.length === 2, 'mangaDexDriver.findSeries takes 2 args');
+
 if (failures) {
   console.error(`\n${failures} driver check(s) failed`);
   process.exit(1);

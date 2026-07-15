@@ -4,18 +4,14 @@
   import SearchFilters from '../lib/components/search/SearchFilters.svelte';
   import SearchResults from '../lib/components/search/SearchResults.svelte';
   import SearchSortTabs from '../lib/components/search/SearchSortTabs.svelte';
-  import { titleCandidateRoute } from '../lib/media/openTitleCandidate';
   import {
     hasSearchRouteState,
     parseSearchRouteParams,
     searchRoutePath,
     type SearchRouteState,
   } from '../lib/search/searchRouteState';
-  import {
-    comickSourceFeed,
-    sourceFeedGenreSlug,
-  } from '../lib/sourceFeeds/comick';
-  import type { SourceFeedTitle } from '../lib/sourceFeeds/types';
+  import { search, browseFiltered, GENRE_COLLECTION } from '../lib/catalog/anilist';
+  import type { Title } from '../lib/catalog/types';
 
   // ── Search state ────────────────────────────────────────────────────
   let q = $state('');
@@ -25,18 +21,15 @@
   let selectedGenres = $state<string[]>([]);
   let excludedGenres = $state<string[]>([]);
   let country = $state('');
-  let sort = $state('created_at');
+  let sort = $state('TRENDING_DESC');
   let status = $state('');
-  let time = $state('');
   let showFilters = $state(false);
 
   // ── Results ───────────────────────────────────────────────────────
-  let results = $state<SourceFeedTitle[]>([]);
+  let results = $state<Title[]>([]);
   let loading = $state(false);
   let err = $state('');
-  let openErr = $state('');
   let hasSearched = $state(false);
-  let navigatingTo = $state('');
 
   let paramsFromRoute = $derived.by(() => {
     $route;
@@ -47,7 +40,6 @@
     if (state.selectedGenres.length > 0) selectedGenres = state.selectedGenres;
     if (state.status) status = state.status;
     if (state.country) country = state.country;
-    if (state.time) time = state.time;
     if (state.sort) sort = state.sort;
     if (state.q && !q) q = state.q;
   }
@@ -66,24 +58,35 @@
     excludedGenres = [];
     country = '';
     status = '';
-    time = '';
+  }
+
+  /** Map the UI country value ('jp'/'kr'/'cn'/'') to AniList Country ('JP'/'KR'/'CN'/null). */
+  function mapCountry(c: string): 'JP' | 'KR' | 'CN' | null {
+    if (c === 'jp') return 'JP';
+    if (c === 'kr') return 'KR';
+    if (c === 'cn') return 'CN';
+    return null;
   }
 
   async function run() {
     const query = q.trim();
-    loading = true; err = ''; openErr = ''; hasSearched = true;
+    loading = true; err = ''; hasSearched = true;
     try {
-      results = await comickSourceFeed.search({
-        q: query || undefined,
-        genres: selectedGenres.length > 0 ? selectedGenres : undefined,
-        excludeGenres: excludedGenres.length > 0 ? excludedGenres : undefined,
-        country: country || undefined,
-        sort: sort || undefined,
-        status: status || undefined,
-        time: time || undefined,
-        page: 1,
-        limit: 30,
-      });
+      if (query) {
+        // Text search — use AniList search (SEARCH_MATCH sort)
+        results = await search(query, 1, 30);
+      } else {
+        // Browse/filter mode — use browseFiltered
+        results = await browseFiltered({
+          country: mapCountry(country),
+          genres: selectedGenres.length > 0 ? selectedGenres : undefined,
+          excludeGenres: excludedGenres.length > 0 ? excludedGenres : undefined,
+          sort: sort || undefined,
+          status: status || undefined,
+          page: 1,
+          perPage: 30,
+        });
+      }
     } catch (e) {
       err = String(e);
       results = [];
@@ -94,25 +97,8 @@
 
   function onSearchSubmit(e: Event) {
     e.preventDefault();
-    go(searchRoutePath({ q, selectedGenres, country, sort, status, time }));
+    go(searchRoutePath({ q, selectedGenres, country, sort, status }));
     void run();
-  }
-
-  async function openResult(item: SourceFeedTitle) {
-    navigatingTo = item.slug;
-    openErr = '';
-    try {
-      const result = await titleCandidateRoute(item.title);
-      if (result.kind === 'media') {
-        go(result.route);
-      } else {
-        openErr = `No AniList catalog match found for "${item.title}". Try a broader title search.`;
-      }
-    } catch (e) {
-      openErr = `Could not open "${item.title}": ${String(e)}`;
-    } finally {
-      navigatingTo = '';
-    }
   }
 
   onMount(() => inputEl?.focus());
@@ -140,13 +126,11 @@
   <div class="content-layout">
     <SearchFilters
       visible={showFilters}
-      genres={comickSourceFeed.genres}
+      genres={GENRE_COLLECTION}
       bind:selectedGenres
       bind:excludedGenres
       bind:country
       bind:status
-      bind:time
-      genreSlug={sourceFeedGenreSlug}
       onChange={run}
       onClear={clearFilters}
     />
@@ -157,10 +141,7 @@
       {hasSearched}
       query={q}
       {results}
-      {openErr}
-      {navigatingTo}
       onRetry={run}
-      onOpen={openResult}
     />
   </div>
 </div>

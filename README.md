@@ -4,6 +4,10 @@ A cozy manga and comic reader for your desktop and browser.
 
 Koma helps you keep track of what you're reading, discover new titles through AniList, and read chapters from manga sites you add yourself. It's a reader and tracker in one — no account needed, no cloud dependency, just your local library.
 
+<p align="center">
+  <img src="screenshots/home.png" alt="Koma home page" width="80%">
+</p>
+
 ## Features
 
 - **Browse & discover** — Search and filter manga/manhwa/manhua through AniList's catalog. Trending, popular, by genre, by country.
@@ -13,6 +17,12 @@ Koma helps you keep track of what you're reading, discover new titles through An
 - **Your own sources** — Add any manga site by URL. Koma auto-detects common CMS platforms (Madara, MangaStream, Genkan, and others) so you don't need to configure selectors manually.
 - **Offline cache** — Chapter pages are cached for offline reading. Clear caches when you need space.
 - **Desktop + PWA** — Runs as a Tauri desktop app (macOS/Windows/Linux) or as a installable PWA in your browser.
+
+<p align="center">
+  <img src="screenshots/reader.png" alt="Reader" width="30%">
+  <img src="screenshots/library.png" alt="Library" width="30%">
+  <img src="screenshots/media.png" alt="Media detail" width="30%">
+</p>
 
 ## Getting Started
 
@@ -38,6 +48,10 @@ Then open `http://localhost:5174`. You can also install it as a PWA from your br
 2. Paste a manga site URL (e.g. `https://example.com`) and click **Add & Check**
 3. If Koma recognizes the CMS, the source is ready to use
 4. Search for a title, open it, and chapters will resolve from your enabled sources
+
+<p align="center">
+  <img src="screenshots/settings.png" alt="Settings and sources" width="80%">
+</p>
 
 ## How it works
 

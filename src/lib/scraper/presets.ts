@@ -70,8 +70,8 @@ export const mangaDex: Preset = {
   id: 'mangadex',
   name: 'MangaDex',
   hosts: ['mangadex.org'],
-  detect: /MangaDex|Unsupported Browser/i,
-  driver: 'html', // MangaDex preset currently uses the HTML driver (no dedicated API driver yet)
+  detect: /MangaDex|Unsupported Browser|api\.mangadex\.org/i,
+  driver: 'mangadex',
 };
 
 export const asura: Preset = {
@@ -201,6 +201,54 @@ export const wpManga: Preset = {
   },
 };
 
+export const mangaPill: Preset = {
+  id: 'mangapill',
+  name: 'MangaPill',
+  hosts: ['mangapill.com'],
+  detect: /MangaPill|mangapill\.com/i,
+  driver: 'html',
+  config: {
+    search: {
+      url: '/search?q={q}',
+      results: 'a[href^="/manga/"]',
+      link: ':scope',
+      title: 'h2, h3, .font-bold, [class*="title"]',
+    },
+    chapters: {
+      list: '#chapters a[href^="/chapters/"], a[href*="/chapters/"], .grid a[href*="/chapters/"]',
+      link: ':scope',
+    },
+    chapter: {
+      pages: 'img.js-page, img[data-src][class*="page"], .js-page img',
+      imgAttr: ['data-src', 'src'],
+    },
+  },
+};
+
+export const weebCentral: Preset = {
+  id: 'weebcentral',
+  name: 'WeebCentral',
+  hosts: ['weebcentral.com'],
+  detect: /weebcentral\.com|Weeb\s*Central/i,
+  driver: 'html',
+  config: {
+    search: {
+      url: '/search/data?text={q}&sort=Best+Match&order=Descending&display_mode=Full+Display',
+      results: 'article > a.link, span.tooltip a, a[href*="/series/"]',
+      link: ':scope',
+      title: 'span[data-tip], article[data-tip], [class*="grow"]',
+    },
+    chapters: {
+      list: 'a[href*="/chapters/"]',
+      link: ':scope',
+    },
+    chapter: {
+      pages: 'main section img[alt*="Page"], section img[alt*="Page"]',
+      imgAttr: ['src', 'data-src'],
+    },
+  },
+};
+
 export const comick: Preset = {
   id: 'comick',
   name: 'ComicK (HTML + API hybrid)',
@@ -217,7 +265,7 @@ export const comickApi: Preset = {
   driver: 'comick-api',
 };
 
-export const PRESETS: Preset[] = [madara, mangaReader, asura, mangaFire, mangaStream, genkan, wpManga, comick, comickApi];
+export const PRESETS: Preset[] = [madara, mangaReader, mangaDex, asura, mangaFire, mangaStream, genkan, wpManga, mangaPill, weebCentral, comick, comickApi];
 
 export function presetById(id?: string): Preset | undefined {
   return PRESETS.find((p) => p.id === id);

@@ -57,6 +57,9 @@
     Resolving chapters from enabled sources...
   {:else if chapterSource}
     Chapters from {chapterSource.name}{#if preferredGroup} with {preferredGroup} preferred{/if}
+    {#if chapterSource.name === 'MangaDex'}
+      <span class="attribution">— Chapters provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a> and scanlation groups.</span>
+    {/if}
   {:else if sources.length === 0}
     Add a source in Settings to start reading.
   {:else if chapterErr}
@@ -71,4 +74,7 @@
   .pref-select { min-height: 30px; padding: 0 8px; border-radius: var(--radius-sm); border: 1px solid var(--border); background: var(--surface); color: var(--text); font-size: 13px; }
   .pref-value { font-size: 13px; color: var(--muted); }
   .source-line { min-height: 22px; margin-top: 12px; color: var(--muted); font-size: 13px; }
+  .attribution { font-size: 11px; color: var(--muted-2); }
+  .attribution a { color: var(--muted-2); text-decoration: underline; }
+  .attribution a:hover { color: var(--accent); }
 </style>

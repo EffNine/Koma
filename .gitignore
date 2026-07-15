@@ -6,4 +6,4 @@ src-tauri/gen
 *.log
 .claude/
 .playwright-mcp/
-e2e-session/
+e2e-session/test-results/

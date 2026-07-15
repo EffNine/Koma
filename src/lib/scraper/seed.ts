@@ -3,16 +3,10 @@ import { checkSourceUrl } from './sourceCheck';
 import type { AddedSource, Source } from './sources';
 import { friendlySourceName } from './sources';
 
-const BUILTIN_SOURCE_URLS = [
-  'https://comickz.co.uk/',
-  'https://api.comick.io/',
-  'https://mangadex.org/',
-  'https://weebcentral.com/',
-  'https://mangapill.com/',
-];
+const BUILTIN_SOURCE_URLS: string[] = [];
 
-const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v5';
-const OLD_SOURCE_KEYS = ['koma.sources.seeded.v4'];
+const INITIAL_SOURCES_KEY = 'koma.sources.seeded.v6';
+const OLD_SOURCE_KEYS = ['koma.sources.seeded.v5', 'koma.sources.seeded.v4'];
 let ensureInitialSourcesPromise: Promise<void> | null = null;
 
 export async function ensureInitialSources(): Promise<void> {

@@ -7,3 +7,4 @@ src-tauri/gen
 .claude/
 .playwright-mcp/
 e2e-session/test-results/
+docs/verified-source-urls.md

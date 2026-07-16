@@ -285,9 +285,9 @@
     z-index: 50;
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    padding: 8px 12px;
-    padding-top: max(env(safe-area-inset-top, 0px), 8px);
+    gap: 3px;
+    padding: 4px 10px;
+    padding-top: max(env(safe-area-inset-top, 0px), 4px);
     background: color-mix(in srgb, var(--bg) 78%, transparent);
     backdrop-filter: blur(12px);
     border-bottom: 1px solid var(--border-soft);
@@ -300,51 +300,51 @@
     opacity: 1;
     pointer-events: auto;
   }
-  .reader-top { display: flex; gap: 10px; align-items: flex-start; flex-wrap: wrap; }
-  .reader-head { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
-  .reader-head h1 { margin: 0; font-size: clamp(16px, 1.8vw, 22px); line-height: 1.1; }
-  .reader-chapter-label { font-size: 12px; color: var(--accent); font-weight: 500; }
-  .reader-meta { display: flex; gap: 10px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+  .reader-top { display: flex; gap: 6px; align-items: center; flex-wrap: wrap; }
+  .reader-head { display: flex; flex-direction: row; align-items: center; gap: 6px; min-width: 0; }
+  .reader-head h1 { margin: 0; font-size: clamp(13px, 1.4vw, 16px); line-height: 1.1; }
+  .reader-chapter-label { font-size: 11px; color: var(--accent); font-weight: 500; white-space: nowrap; }
+  .reader-meta { display: flex; gap: 6px; flex-wrap: wrap; color: var(--muted); font-size: 11px; }
   .reader-meta a { color: var(--muted); }
   .reader-meta a:hover { color: var(--text); }
   .attribution { font-size: 11px; color: var(--muted-2); }
   .attribution a { color: var(--muted-2); text-decoration: underline; }
   .attribution a:hover { color: var(--accent); }
   .toolbar {
-    display: flex; gap: 8px; justify-content: flex-start; align-items: center; flex-wrap: wrap;
+    display: flex; gap: 4px; justify-content: flex-start; align-items: center; flex-wrap: wrap;
     padding: 0;
     border: none;
     background: none;
     backdrop-filter: none;
   }
-  .toolbar-block { display: flex; gap: 5px; align-items: center; flex-wrap: wrap; }
-  .toolbar-label { color: var(--muted-2); font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: .05em; }
-  .toolbar-page { font-size: 12px; font-weight: 650; }
-  .segmented { display: inline-flex; padding: 2px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); }
-  .seg-btn { min-width: 48px; min-height: 24px; padding: 0 7px; border: 0; border-radius: calc(var(--radius-sm) - 2px); background: transparent; color: var(--muted); font-size: 11px; font-weight: 650; }
+  .toolbar-block { display: flex; gap: 3px; align-items: center; flex-wrap: nowrap; }
+  .toolbar-label { color: var(--muted-2); font-size: 9px; font-weight: 700; text-transform: uppercase; letter-spacing: .03em; }
+  .toolbar-page { font-size: 11px; font-weight: 650; }
+  .segmented { display: inline-flex; padding: 1px; border: 1px solid var(--border); background: var(--surface); border-radius: var(--radius-sm); }
+  .seg-btn { min-width: 32px; min-height: 20px; padding: 0 5px; border: 0; border-radius: calc(var(--radius-sm) - 2px); background: transparent; color: var(--muted); font-size: 10px; font-weight: 650; }
   .seg-btn.active { background: var(--accent); color: #17110a; }
-  .progress-track { width: 80px; height: 4px; border-radius: 999px; background: var(--elevated); overflow: hidden; border: 1px solid var(--border-soft); }
+  .progress-track { width: 60px; height: 3px; border-radius: 999px; background: var(--elevated); overflow: hidden; border: 1px solid var(--border-soft); }
   .progress-track span { display: block; height: 100%; background: linear-gradient(90deg, var(--ok), var(--accent)); border-radius: inherit; }
   .loading-track span { background: var(--accent); }
-  .toolbar-shortcuts { display: flex; gap: 4px; align-items: center; flex-wrap: wrap; font-size: 11px; color: var(--muted-2); }
-  .toolbar-shortcuts kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 18px; height: 18px; padding: 0 4px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); font-family: inherit; font-size: 10px; color: var(--muted); }
-  .toolbar-filter { display: flex; gap: 4px; align-items: center; }
-  .filter-slider { width: 60px; height: 4px; accent-color: var(--accent); cursor: pointer; }
+  .toolbar-shortcuts { display: flex; gap: 3px; align-items: center; flex-wrap: wrap; font-size: 10px; color: var(--muted-2); }
+  .toolbar-shortcuts kbd { display: inline-flex; align-items: center; justify-content: center; min-width: 16px; height: 16px; padding: 0 3px; border-radius: 3px; border: 1px solid var(--border); background: var(--surface); font-family: inherit; font-size: 9px; color: var(--muted); }
+  .toolbar-filter { display: flex; gap: 3px; align-items: center; }
+  .filter-slider { width: 48px; height: 3px; accent-color: var(--accent); cursor: pointer; }
   .toolbar-chapter-nav { margin-left: auto; }
   .meta-sep { color: var(--muted-2); }
-  .group-switch { font-size: 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 2px 6px; max-width: 200px; }
-  .tiny-btn { min-height: 28px; padding: 0 8px; font-size: 11px; min-width: auto; }
+  .group-switch { font-size: 11px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 1px 4px; max-width: 160px; }
+  .tiny-btn { min-height: 22px; padding: 0 6px; font-size: 10px; min-width: auto; }
 
   @media (max-width: 900px) {
-    .toolbar { top: 96px; }
     .toolbar-chapter-nav { width: 100%; margin-left: 0; }
-    .toolbar-chapter-nav .btn { flex: 1; min-height: 36px; }
+    .toolbar-chapter-nav .btn { flex: 1; min-height: 28px; }
   }
   @media (max-width: 560px) {
-    .reader-head h1 { font-size: 15px; }
-    .reader-meta { font-size: 11px; gap: 6px; }
+    .reader-head h1 { font-size: 13px; }
+    .reader-meta { display: none; }
     .toolbar-shortcuts kbd { display: none; }
     .toolbar-shortcuts .btn { margin-left: auto; }
-    .seg-btn { min-width: 40px; padding: 0 6px; }
+    .seg-btn { min-width: 28px; padding: 0 4px; }
+    .toolbar-block.toolbar-filter { display: none; }
   }
 </style>

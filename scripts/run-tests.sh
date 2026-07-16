@@ -51,7 +51,7 @@ failures=0
 for t in "${TESTS[@]}"; do
   echo "::group::Running $t"
   # shellcheck disable=SC2086
-  if $TIMEOUT npx tsx "tests/$t"; then
+  if $TIMEOUT ./node_modules/.bin/tsx "tests/$t"; then
     echo "::endgroup::"
     echo "✅ $t passed"
   else

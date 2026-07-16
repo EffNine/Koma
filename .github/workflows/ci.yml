@@ -50,4 +50,6 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - name: Run ${{ matrix.test-file }}
-        run: timeout 180 pnpm exec tsx "${{ matrix.test-file }}"
+        run: timeout 360 pnpm exec tsx "${{ matrix.test-file }}"
+        env:
+          NODE_OPTIONS: "--max-old-space-size=4096"

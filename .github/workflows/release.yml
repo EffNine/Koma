@@ -2,6 +2,12 @@ name: Release
 on:
   push:
     tags: ["v*"]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Tag to build from
+        required: true
+        type: string
 
 jobs:
   release:
@@ -19,6 +25,8 @@ jobs:
     runs-on: ${{ matrix.os }}
     steps:
       - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.inputs.tag || github.ref }}
       - uses: pnpm/action-setup@v4
       - uses: actions/setup-node@v4
         with:
@@ -30,6 +38,16 @@ jobs:
       - run: pnpm install
       - run: pnpm tauri build --target ${{ matrix.target }}
       - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'push'
         with:
+          files: |
+            src-tauri/target/**/release/bundle/**/*
+      - uses: softprops/action-gh-release@v2
+        if: github.event_name == 'workflow_dispatch'
+        with:
+          tag_name: ${{ github.event.inputs.tag }}
+          name: ${{ github.event.inputs.tag }}
+          body: Manually triggered release
+          draft: true
           files: |
             src-tauri/target/**/release/bundle/**/*

@@ -1,0 +1,160 @@
+name: Auto Release
+on:
+  push:
+    branches: [main]
+
+concurrency:
+  group: release-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release:
+    if: github.actor != 'github-actions[bot]'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: read
+    outputs:
+      version: ${{ steps.bump.outputs.version }}
+      released: ${{ steps.bump.outputs.released }}
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+          token: ${{ secrets.GH_PAT || github.token }}
+
+      - uses: pnpm/action-setup@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+
+      - name: Determine next version
+        id: bump
+        run: |
+          CURRENT=$(node -p "require('./package.json').version")
+          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+
+          # Check if there are any tags
+          HAS_TAGS=false
+          if git describe --tags --abbrev=0 2>/dev/null; then
+            HAS_TAGS=true
+            LAST_TAG=$(git describe --tags --abbrev=0)
+          else
+            LAST_TAG=""
+          fi
+          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+
+          # If no tags or current version already tagged, skip
+          if [ "$HAS_TAGS" = "true" ] && [ "$LAST_TAG" = "v$CURRENT" ]; then
+            echo "No new commits since last release"
+            echo "released=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # If no tags exist yet, release current version
+          if [ "$HAS_TAGS" = "false" ]; then
+            echo "version=$CURRENT" >> $GITHUB_OUTPUT
+            echo "released=true" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          # Determine bump type from conventional commits
+          COMMITS=$(git log "$LAST_TAG..HEAD" --pretty=format:"%s" 2>/dev/null || echo "")
+
+          if [ -z "$COMMITS" ]; then
+            echo "No new commits since last release"
+            echo "released=false" >> $GITHUB_OUTPUT
+            exit 0
+          fi
+
+          MAJOR=$(echo "$COMMITS" | grep -c "^.*!:.*\|^[a-z]*(.*)!:.*" || true)
+          MINOR=$(echo "$COMMITS" | grep -c "^feat\|^feature" || true)
+          PATCH=$(echo "$COMMITS" | grep -c "^fix\|^bugfix" || true)
+
+          IFS='.' read -r MAJOR_V MINOR_V PATCH_V <<< "$CURRENT"
+
+          if [ "$MAJOR" -gt 0 ]; then
+            MAJOR_V=$((MAJOR_V + 1))
+            MINOR_V=0
+            PATCH_V=0
+          elif [ "$MINOR" -gt 0 ]; then
+            MINOR_V=$((MINOR_V + 1))
+            PATCH_V=0
+          else
+            PATCH_V=$((PATCH_V + 1))
+          fi
+
+          NEXT="${MAJOR_V}.${MINOR_V}.${PATCH_V}"
+          echo "version=$NEXT" >> $GITHUB_OUTPUT
+          echo "released=true" >> $GITHUB_OUTPUT
+
+      - name: Bump version in files
+        if: steps.bump.outputs.released == 'true'
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+
+          # Update package.json
+          node -e "
+            const pkg = require('./package.json');
+            pkg.version = '$VERSION';
+            require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
+          "
+
+          # Update Cargo.toml
+          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+
+          # Update tauri.conf.json
+          node -e "
+            const conf = require('./src-tauri/tauri.conf.json');
+            conf.version = '$VERSION';
+            require('fs').writeFileSync('./src-tauri/tauri.conf.json', JSON.stringify(conf, null, 2) + '\n');
+          "
+
+          echo "Version bumped to $VERSION"
+
+      - name: Commit and tag
+        if: steps.bump.outputs.released == 'true'
+        run: |
+          VERSION="${{ steps.bump.outputs.version }}"
+
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+          git add package.json src-tauri/Cargo.toml src-tauri/tauri.conf.json
+          git commit -m "chore: bump version to $VERSION"
+
+          git tag "v$VERSION"
+          git push origin "v$VERSION"
+
+      - name: Generate release notes
+        if: steps.bump.outputs.released == 'true'
+        id: notes
+        run: |
+          LAST_TAG="${{ steps.bump.outputs.last_tag }}"
+          VERSION="${{ steps.bump.outputs.version }}"
+
+          if [ -z "$LAST_TAG" ]; then
+            NOTES=$(git log --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Initial release")
+            FULL_LOG=""
+          else
+            NOTES=$(git log "$LAST_TAG..HEAD" --pretty=format:"- %s (%h)" 2>/dev/null || echo "- Initial release")
+            FULL_LOG="**Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_TAG...v$VERSION"
+          fi
+
+          echo "notes<<EOF" >> $GITHUB_OUTPUT
+          echo "## What's Changed" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$NOTES" >> $GITHUB_OUTPUT
+          echo "" >> $GITHUB_OUTPUT
+          echo "$FULL_LOG" >> $GITHUB_OUTPUT
+          echo "EOF" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        if: steps.bump.outputs.released == 'true'
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.bump.outputs.version }}
+          name: v${{ steps.bump.outputs.version }}
+          body: ${{ steps.notes.outputs.notes }}
+          token: ${{ secrets.GH_PAT || github.token }}

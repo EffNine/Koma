@@ -779,23 +779,20 @@
 </div>
 
 <style>
-  .reader-shell { display: flex; flex-direction: column; gap: 14px; position: relative; }
+  .reader-shell { display: flex; flex-direction: column; gap: 10px; position: relative; }
   .chrome-toggle {
-    position: fixed; top: 10px; right: 10px; z-index: 55;
-    width: 36px; height: 36px; border-radius: var(--radius-sm);
+    position: fixed; top: 6px; right: 10px; z-index: 55;
+    width: 28px; height: 28px; border-radius: var(--radius-sm);
     border: 1px solid var(--border); background: color-mix(in srgb, var(--bg) 80%, transparent);
-    color: var(--text); font-size: 16px; cursor: pointer; display: flex; align-items: center; justify-content: center;
+    color: var(--text); font-size: 13px; cursor: pointer; display: flex; align-items: center; justify-content: center;
     backdrop-filter: blur(8px);
   }
   .reader-toast {
-    position: fixed; top: 52px; right: 10px; z-index: 55;
+    position: fixed; top: 40px; right: 10px; z-index: 55;
     max-width: min(320px, calc(100vw - 20px));
   }
 
   .reader-shell.chrome-open .chrome-toggle {
     background: var(--surface);
-  }
-  @media (max-width: 560px) {
-    .chrome-toggle { width: 40px; height: 40px; }
   }
 </style>

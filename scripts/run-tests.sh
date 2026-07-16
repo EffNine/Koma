@@ -1,8 +1,18 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-# Run each test file sequentially with a 120s timeout per file
+# Run each test file sequentially with a 120s timeout per file.
 # Reports progress so we can see which test hangs in CI.
+# On Linux (CI) the `timeout` command is used; on macOS fall back to
+# running without a timeout wrapper — tests are fast enough locally.
+
+if command -v timeout &>/dev/null; then
+  TIMEOUT="timeout 120"
+elif command -v gtimeout &>/dev/null; then
+  TIMEOUT="gtimeout 120"
+else
+  TIMEOUT=""
+fi
 
 TESTS=(
   scraper.test.ts
@@ -40,7 +50,8 @@ TESTS=(
 failures=0
 for t in "${TESTS[@]}"; do
   echo "::group::Running $t"
-  if npx tsx "tests/$t"; then
+  # shellcheck disable=SC2086
+  if $TIMEOUT npx tsx "tests/$t"; then
     echo "::endgroup::"
     echo "✅ $t passed"
   else

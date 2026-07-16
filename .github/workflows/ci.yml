@@ -50,4 +50,4 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - name: Run ${{ matrix.test-file }}
-        run: timeout 180 tsx "${{ matrix.test-file }}"
+        run: timeout 180 pnpm exec tsx "${{ matrix.test-file }}"

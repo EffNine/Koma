@@ -57,3 +57,4 @@ if [ "$failures" -gt 0 ]; then
 fi
 echo "---"
 echo "All tests passed"
+

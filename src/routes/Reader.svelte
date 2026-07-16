@@ -443,7 +443,6 @@
   }
 
   function onReaderMouseMove(e: MouseEvent) {
-    if (showChrome) return;
     const nearTop = e.clientY < 60;
     if (nearTop) {
       clearTimeout(hideTimeout);
@@ -458,7 +457,6 @@
   }
 
   function onReaderMouseLeave() {
-    if (showChrome) return;
     clearTimeout(hideTimeout);
     hideTimeout = setTimeout(() => {
       chromeAutoShow = false;

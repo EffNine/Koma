@@ -5,10 +5,16 @@ on:
   push:
     branches: [main]
 
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
-  test:
+  setup:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
+    outputs:
+      test-matrix: ${{ steps.list-tests.outputs.test-matrix }}
     steps:
       - uses: actions/checkout@v4
       - uses: pnpm/action-setup@v4
@@ -20,5 +26,28 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - run: pnpm typecheck
-      - name: Run tests
-        run: bash scripts/run-tests.sh
+      - id: list-tests
+        run: |
+          TESTS=$(ls tests/*.test.ts | python3 -c 'import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          echo "test-matrix=$TESTS" >> "$GITHUB_OUTPUT"
+
+  test:
+    needs: setup
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    strategy:
+      fail-fast: false
+      matrix:
+        test-file: ${{ fromJson(needs.setup.outputs.test-matrix) }}
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - name: Run ${{ matrix.test-file }}
+        run: timeout 180 tsx "${{ matrix.test-file }}"

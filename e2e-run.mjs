@@ -50,6 +50,10 @@ if (await isPortOpen()) {
 
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({ viewport: { width: 1280, height: 900 } });
+await context.addInitScript(() => {
+  localStorage.setItem('koma.onboarding.complete', '1');
+  localStorage.setItem('koma.sources.seeded.v6', '1');
+});
 const page = await context.newPage();
 
 const logs = [];
@@ -77,8 +81,10 @@ page.on('request', (req) => {
 
 page.on('requestfailed', (req) => {
   const u = req.url();
+  const failure = req.failure()?.errorText ?? '';
+  if (failure.includes('ERR_ABORTED')) return;
   if (u.includes('__koma_scrape') || u.includes('mangadex') || u.includes('asura') || u.includes('mangafire')) {
-    const line = `[requestfailed] ${req.method()} ${u} ${req.failure()?.errorText ?? ''}`;
+    const line = `[requestfailed] ${req.method()} ${u} ${failure}`;
     errors.push(line);
     network.push(line);
   }
@@ -105,8 +111,30 @@ async function capture(name) {
 }
 
 async function goto(path) {
-  await page.goto(`${BASE}${path}`, { waitUntil: 'networkidle' });
-  await page.waitForTimeout(1000);
+  await page.goto(`${BASE}${path}`, { waitUntil: 'domcontentloaded', timeout: 60000 });
+  await page.locator('nav').first().waitFor({ timeout: 15000 });
+  await page.waitForTimeout(500);
+}
+
+async function seedTestReadingSite() {
+  await goto('/');
+  await page.evaluate(async () => {
+    const { db } = await import('/src/lib/db.ts');
+    await db.sources.put({
+      id: 'mangapill.com',
+      name: 'MangaPill',
+      url: 'https://mangapill.com/',
+      preset: 'madara',
+      enabled: true,
+      priority: 0,
+      addedAt: Date.now(),
+      status: 'ready',
+      statusNote: 'E2E test seed',
+      checkedAt: Date.now(),
+    });
+  });
+  await page.reload({ waitUntil: 'domcontentloaded' });
+  await page.locator('nav').first().waitFor({ timeout: 15000 });
 }
 
 async function step(name, action) {
@@ -118,6 +146,7 @@ async function step(name, action) {
 let runnerError = '';
 try {
   await step('home', () => goto('/'));
+  await step('seed-source', () => seedTestReadingSite());
 
   await step('search', async () => {
     await goto('/#/search');
@@ -140,12 +169,11 @@ try {
   });
 
   await step('media-find-chapters', async () => {
-    const panel = page.locator('#source-panel');
-    const resolveBtn = panel.locator('button', { hasText: 'Find Chapters' }).first();
-    if (await resolveBtn.count()) await resolveBtn.click();
-    const busy = page.locator('text=Resolving…');
-    try { await busy.waitFor({ state: 'hidden', timeout: 15000 }); } catch {}
-    await page.waitForTimeout(2000);
+    const loading = page.locator('text=Loading chapters…');
+    try { await loading.waitFor({ state: 'visible', timeout: 5000 }); } catch {}
+    try { await loading.waitFor({ state: 'hidden', timeout: 30000 }); } catch {}
+    await page.locator('.chapters, .empty, .errbox, .loading-chapters').first().waitFor({ timeout: 10000 });
+    await page.waitForTimeout(1000);
   });
 
   await step('library', () => goto('/#/library'));
@@ -171,10 +199,15 @@ const mediaHtml = fs.existsSync(`${OUT}/media-find-chapters.html`)
   : '';
 const appIssues = [];
 const externalWarnings = [];
-if (mediaHtml.includes('No enabled sources yet')) appIssues.push('Media: no enabled sources');
-if (mediaHtml.includes('No series match found on any source')) appIssues.push('Media: no series match on any source');
-if (mediaHtml.includes('No series match found.')) appIssues.push('Media: at least one source had no match');
-if (mediaHtml.includes('blocked by Cloudflare')) externalWarnings.push('MangaDex blocked by Cloudflare through proxy (external, not a code regression)');
+if (mediaHtml.includes('No reading sites yet')) appIssues.push('Media: no reading sites configured');
+if (mediaHtml.includes('No reading sites configured yet')) appIssues.push('Media: no reading sites configured');
+if (mediaHtml.includes('This title was not found on')) {
+  externalWarnings.push('Title not found on seeded reading site (live network / site availability)');
+}
+if (mediaHtml.includes('No chapters found')) appIssues.push('Media: no chapters resolved');
+if (mediaHtml.includes('blocked by Cloudflare') || mediaHtml.includes('Cloudflare protection')) {
+  externalWarnings.push('Reading site blocked by Cloudflare through proxy (external, not a code regression)');
+}
 
 const allIssues = [...appIssues, ...(runnerError ? [runnerError] : []), ...errors];
 

@@ -122,7 +122,7 @@ assert(
   'categorizeFailure identifies proxy errors',
 );
 assert(
-  categorizeFailure(new Error('No page images were extracted')) === 'The source returned no image URLs for this chapter. The chapter may be unavailable or the source format may have changed.',
+  categorizeFailure(new Error('No page images were extracted')) === 'The reading site returned no image URLs for this chapter. The chapter may be unavailable or the site format may have changed.',
   'categorizeFailure identifies no-page errors',
 );
 assert(
@@ -130,7 +130,7 @@ assert(
   'categorizeFailure identifies timeout errors',
 );
 assert(
-  categorizeFailure(new Error('HTTP 403')) === 'The source returned HTTP 403. The chapter may be restricted or unavailable.',
+  categorizeFailure(new Error('HTTP 403')) === 'The reading site returned HTTP 403. The chapter may be restricted or unavailable.',
   'categorizeFailure identifies HTTP status errors',
 );
 assert(

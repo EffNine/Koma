@@ -3,6 +3,7 @@
   import type { Source } from '../../scraper/sources';
   import type { ScrapedChapter } from '../../scraper/engine';
   import type { ChapterGroup } from '../../media/chapterGroups';
+  import type { DownloadProgress } from '../../reader/chapterCache';
   import EmptyState from '../EmptyState.svelte';
   import MediaChapterRow from './MediaChapterRow.svelte';
   import { chapterSummary } from '../../ui/formatting';
@@ -22,9 +23,13 @@
     readChapters,
     groupLinks,
     preferredGroup,
+    cachedChapterUrls,
+    downloadingChapterUrl,
+    downloadProgress,
     onReadChapter,
     onReadAlt,
     onMarkUnread,
+    onDownloadChapter,
     onGotoChapter,
     onPrevPage,
     onNextPage,
@@ -44,9 +49,13 @@
     readChapters: Set<string>;
     groupLinks: Map<string, string>;
     preferredGroup: string | undefined;
+    cachedChapterUrls: Set<string>;
+    downloadingChapterUrl: string;
+    downloadProgress: DownloadProgress | null;
     onReadChapter: (ch: ScrapedChapter) => void;
     onReadAlt: (g: ChapterGroup, value: string) => void;
     onMarkUnread: (num: string | null) => void;
+    onDownloadChapter: (ch: ScrapedChapter) => void;
     onGotoChapter: () => void;
     onPrevPage: () => void;
     onNextPage: () => void;
@@ -69,7 +78,7 @@
   {:else if sources.length === 0}
     <EmptyState id="sources" compact />
   {:else if chapterErr}
-    <div class="card errbox">{chapterErr} <button class="btn small-btn" onclick={() => go('/settings')}>Manage Sources</button></div>
+    <div class="card errbox">{chapterErr} <button class="btn small-btn" onclick={() => go('/settings')}>Manage Reading Sites</button></div>
   {:else if chapters.length === 0}
     <EmptyState id="chapters" compact />
   {:else}
@@ -87,9 +96,13 @@
           {readChapters}
           {groupLinks}
           {preferredGroup}
+          cached={cachedChapterUrls.has(g.preferred.url)}
+          downloading={downloadingChapterUrl === g.preferred.url}
+          downloadProgress={downloadingChapterUrl === g.preferred.url ? downloadProgress : null}
           {onReadChapter}
           {onReadAlt}
           {onMarkUnread}
+          {onDownloadChapter}
         />
       {/each}
     </div>

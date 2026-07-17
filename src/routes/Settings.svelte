@@ -19,7 +19,13 @@
   import { clearCatalogCache, db } from '../lib/db';
   import { unlockCloudflare, listCfCookies, clearCfCookies, onCfUnlockProgress } from '../lib/net';
   import { exportBackup, importBackup, downloadBackup } from '../lib/backup/export';
-  import { getTotalCacheSize, clearAllChapterCache } from '../lib/reader/chapterCache';
+  import {
+    getTotalCacheSize,
+    clearAllChapterCache,
+    getCacheBreakdownByTitle,
+    removeCachedChaptersForMedia,
+    type CacheByTitle,
+  } from '../lib/reader/chapterCache';
   import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
   import BackupSettings from '../lib/components/settings/BackupSettings.svelte';
   import CacheSettings from '../lib/components/settings/CacheSettings.svelte';
@@ -54,6 +60,7 @@
   let cacheMsg = $state('');
   let chapterCacheSize = $state<number | null>(null);
   let chapterCacheMsg = $state('');
+  let chapterCacheBreakdown = $state<CacheByTitle[]>([]);
   let backupMsg = $state('');
   let backupMsgTone = $state<'info' | 'ok' | 'warn' | 'err'>('info');
   let importBusy = $state(false);
@@ -93,6 +100,8 @@
     cacheSize = count;
     const chSize = await getTotalCacheSize();
     chapterCacheSize = chSize;
+    const tracked = await db.trackedTitles.toArray();
+    chapterCacheBreakdown = await getCacheBreakdownByTitle(new Map(tracked.map((title) => [title.mediaId, title.name])));
   }
   onMount(() => {
     refresh();
@@ -126,14 +135,14 @@
     const u = urlInput.trim();
     if (!u) return;
     busy = true;
-    setMsg('info', 'Checking site and saving source…');
+    setMsg('info', 'Checking and saving reading site…');
     try {
       const { source, check } = await addByUrl(u);
       lastSavedId = source.id;
       urlInput = '';
-      if (check.status === 'ready') setMsg('ok', `${source.name} saved to the app. ${check.statusNote}`);
-      else if (check.status === 'needs-config') setMsg('warn', `${source.name} saved to the app. ${check.statusNote}`);
-      else setMsg('warn', `${source.name} saved to the app. ${check.statusNote}`);
+      if (check.status === 'ready') setMsg('ok', `${source.name} saved as a reading site. ${check.statusNote}`);
+      else if (check.status === 'needs-config') setMsg('warn', `${source.name} saved as a reading site. ${check.statusNote}`);
+      else setMsg('warn', `${source.name} saved as a reading site. ${check.statusNote}`);
     } catch (e) {
       setMsg('err', 'Failed: ' + String(e));
     } finally {
@@ -148,7 +157,7 @@
     if (!file) return;
     const imported = await importSources(await file.text());
     lastSavedId = imported[0]?.id ?? '';
-    setMsg('ok', `Imported and saved ${imported.length} source${imported.length === 1 ? '' : 's'} to the app.`);
+    setMsg('ok', `Imported and saved ${imported.length} reading site${imported.length === 1 ? '' : 's'} to the app.`);
     input.value = '';
     refresh();
   }
@@ -160,7 +169,7 @@
 
   async function checkAgain(id: string) {
     checkingId = id;
-    setMsg('info', 'Checking source…');
+    setMsg('info', 'Checking reading site…');
     try {
       const updated = await recheckSource(id);
       if (!updated) return;
@@ -245,6 +254,12 @@
   async function onClearChapterCache() {
     await clearAllChapterCache();
     chapterCacheMsg = 'Chapter cache cleared.';
+    await refreshCacheSize();
+  }
+
+  async function onClearTitleChapterCache(mediaId: number, titleName: string) {
+    await removeCachedChaptersForMedia(mediaId);
+    chapterCacheMsg = `Chapter cache cleared for ${titleName}.`;
     await refreshCacheSize();
   }
 
@@ -389,6 +404,17 @@
     };
   }
 
+  function requestClearTitleChapterCache(row: CacheByTitle) {
+    confirm = {
+      action: 'clearTitleChapterCache',
+      subject: row.titleName,
+      onConfirm: () => {
+        onClearTitleChapterCache(row.mediaId, row.titleName);
+        confirm = null;
+      },
+    };
+  }
+
   const APP_VERSION = '0.1.0';
 
   function requestImportBackup(event: Event) {
@@ -403,7 +429,7 @@
 </script>
 
 <h1 class="h1">Settings</h1>
-<p class="sub">Manage sources, trackers, reader defaults, and cache.</p>
+<p class="sub">Manage reading sites, trackers, reader defaults, and cache.</p>
 
 {#if confirm}
   <ConfirmDialog
@@ -470,10 +496,12 @@
 <CacheSettings
   cacheSize={cacheSize}
   chapterCacheSize={chapterCacheSize}
+  chapterCacheBreakdown={chapterCacheBreakdown}
   cacheMsg={cacheMsg}
   chapterCacheMsg={chapterCacheMsg}
   onClearCatalog={requestClearCatalogCache}
   onClearChapter={requestClearChapterCache}
+  onClearTitleChapter={requestClearTitleChapterCache}
 />
 
 <BackupSettings

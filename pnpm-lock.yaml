@@ -33,6 +33,9 @@ importers:
       playwright:
         specifier: ^1.61.1
         version: 1.61.1
+      resolve:
+        specifier: ^1.22.12
+        version: 1.22.12
       svelte:
         specifier: ^5.19.0
         version: 5.56.4

@@ -29,9 +29,9 @@ export function emptyState(id: EmptyStateId, context?: string): EmptyStateConten
   switch (id) {
     case 'sources':
       return {
-        title: 'No sources yet',
-        body: 'Add a manga source so Koma can find chapters for you.',
-        action: { label: 'Add Source', href: '/settings', variant: 'primary' },
+        title: 'No reading sites yet',
+        body: 'Add a manga reading site so Koma can find chapters for you.',
+        action: { label: 'Add Reading Site', href: '/settings', variant: 'primary' },
       };
     case 'library':
       return {
@@ -55,13 +55,13 @@ export function emptyState(id: EmptyStateId, context?: string): EmptyStateConten
     case 'chapters':
       return {
         title: 'No chapters found',
-        body: 'This title has no available chapters from your enabled sources. Add or enable a source to continue.',
-        action: { label: 'Manage Sources', href: '/settings', variant: 'primary' },
+        body: 'This title has no available chapters from your enabled reading sites. Add or enable a reading site to continue.',
+        action: { label: 'Manage Reading Sites', href: '/settings', variant: 'primary' },
       };
     case 'updates':
       return {
         title: 'No new updates',
-        body: 'Followed titles will show new chapters here when sources are checked.',
+        body: 'Followed titles will show new chapters here when reading sites are checked.',
         action: { label: 'Open Library', href: '/library', variant: 'primary' },
       };
     case 'browse':
@@ -72,7 +72,7 @@ export function emptyState(id: EmptyStateId, context?: string): EmptyStateConten
     case 'reader-failed':
       return {
         title: 'Unable to load chapter',
-        body: context || 'The chapter could not be loaded. You can retry or try another source.',
+        body: context || 'The chapter could not be loaded. You can retry or try another reading site.',
       };
     case 'reader-loading':
       return {

@@ -38,6 +38,7 @@
     pageLoadLabel,
     pageLoadPercent,
     loadCount,
+    cachedPages,
     totalPages,
     prevChapter,
     nextChapter,
@@ -75,6 +76,7 @@
     pageLoadLabel: string;
     pageLoadPercent: number;
     loadCount: number;
+    cachedPages: number;
     totalPages: number;
     prevChapter?: ScrapedChapter | null;
     nextChapter?: ScrapedChapter | null;
@@ -131,6 +133,9 @@
           <span class="meta-sep">|</span>
           <span class="attribution">Chapters provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a> and scanlation groups.</span>
         {/if}
+        {#if cachedPages > 0}
+          <span class="cache-badge">{cachedPages === totalPages ? 'Offline cache' : `${cachedPages} cached`}</span>
+        {/if}
         {#if sameNumberAlts.length > 0}
           <span class="meta-sep">|</span>
           <select class="group-switch" onchange={(e) => {
@@ -150,7 +155,7 @@
           <span>{currentGroup}</span>
         {/if}
         {#if chapterUrl}
-          <a href={chapterUrl} target="_blank" rel="noopener">Source chapter ↗</a>
+          <a href={chapterUrl} target="_blank" rel="noopener">Reading-site chapter ↗</a>
         {/if}
         {#if currentSourceUrl}
           <a href={currentSourceUrl} target="_blank" rel="noopener">Current image ↗</a>
@@ -310,6 +315,7 @@
   .attribution { font-size: 11px; color: var(--muted-2); }
   .attribution a { color: var(--muted-2); text-decoration: underline; }
   .attribution a:hover { color: var(--accent); }
+  .cache-badge { color: color-mix(in srgb, var(--ok) 80%, white); background: var(--ok-soft); border: 1px solid color-mix(in srgb, var(--ok) 28%, transparent); border-radius: 999px; padding: 0 6px; font-weight: 700; }
   .toolbar {
     display: flex; gap: 4px; justify-content: flex-start; align-items: center; flex-wrap: wrap;
     padding: 0;

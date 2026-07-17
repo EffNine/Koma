@@ -6,6 +6,7 @@
   let {
     title,
     followed,
+    pinned,
     followBusy,
     progressChapter,
     hasChapters,
@@ -13,10 +14,12 @@
     onStartReading,
     onStartFromBeginning,
     onToggleFollow,
+    onTogglePinned,
     onBack,
   }: {
     title: Title;
     followed: boolean;
+    pinned: boolean;
     followBusy: boolean;
     progressChapter: string | undefined;
     hasChapters: boolean;
@@ -24,6 +27,7 @@
     onStartReading: () => void;
     onStartFromBeginning: () => void;
     onToggleFollow: () => void;
+    onTogglePinned: () => void;
     onBack: () => void;
   } = $props();
 
@@ -66,6 +70,9 @@
       {/if}
       <button class="btn" onclick={onToggleFollow} disabled={followBusy}>
         {followBusy ? 'Saving…' : followed ? 'Following' : 'Follow'}
+      </button>
+      <button class="btn" onclick={onTogglePinned}>
+        {pinned ? 'Pinned' : 'Pin to Home'}
       </button>
       {#if siteUrl}<a class="btn" href={siteUrl} target="_blank" rel="noopener">AniList ↗</a>{/if}
     </div>

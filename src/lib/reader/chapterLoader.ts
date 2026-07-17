@@ -5,6 +5,7 @@ import { recordHealth } from '../scraper/sourceHealth';
 export interface ChapterLoadResult {
   blobUrls: string[];
   failedPages: number[];
+  cachedPages: number;
 }
 
 export interface ChapterLoadOptions {
@@ -27,17 +28,19 @@ export async function loadChapterImages(
   const blobUrls: string[] = Array(urls.length).fill('');
   const failedPages: number[] = [];
   const concurrency = Math.max(1, Math.min(options.concurrency ?? 4, 8));
+  let cachedPages = 0;
   let nextIndex = 0;
 
   // Try loading from cache first
   if (options.mediaId && options.sourceId && options.chapterUrl) {
     for (let i = 0; i < urls.length; i++) {
-      if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages };
+      if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages, cachedPages };
       try {
         const cached = await getCachedPage(options.mediaId, options.sourceId, options.chapterUrl, i);
         if (cached) {
           const blobUrl = URL.createObjectURL(cached);
           blobUrls[i] = blobUrl;
+          cachedPages++;
           options.onPageLoaded?.(i, blobUrl);
         }
       } catch {
@@ -59,19 +62,19 @@ export async function loadChapterImages(
   async function loadOne(i: number) {
     try {
       const bytes = await fetchBytes(urls[i], { referer });
-      if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages };
+      if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages, cachedPages };
       const blobUrl = URL.createObjectURL(new Blob([toBlobPart(bytes)], { type: guessImageType(urls[i], bytes) }));
       blobUrls[i] = blobUrl;
       options.onPageLoaded?.(i, blobUrl);
     } catch (e) {
-      if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages };
+        if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages, cachedPages };
       failedPages.push(i + 1);
       console.error(e);
     }
   }
 
   await Promise.all(Array.from({ length: Math.min(concurrency, urls.length) }, () => worker()));
-  if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages };
+  if (signal?.aborted) return { blobUrls: revoke(blobUrls), failedPages, cachedPages };
 
   // Cache loaded pages in background
   if (options.mediaId && options.sourceId && options.chapterUrl && failedPages.length === 0) {
@@ -87,7 +90,7 @@ export async function loadChapterImages(
     );
   }
 
-  return { blobUrls, failedPages };
+  return { blobUrls, failedPages, cachedPages };
 }
 
 export function revokeBlobUrls(urls: string[]): void {
@@ -111,12 +114,12 @@ export async function retryFailedPages(
   const stillFailed: number[] = [];
 
   for (const pageNum of failedPages) {
-    if (signal?.aborted) return { blobUrls, failedPages: stillFailed };
+    if (signal?.aborted) return { blobUrls, failedPages: stillFailed, cachedPages: 0 };
     const i = pageNum - 1;
     if (i < 0 || i >= urls.length) continue;
     try {
       const bytes = await fetchBytes(urls[i], { referer });
-      if (signal?.aborted) return { blobUrls, failedPages: stillFailed };
+      if (signal?.aborted) return { blobUrls, failedPages: stillFailed, cachedPages: 0 };
       const blobUrl = URL.createObjectURL(new Blob([toBlobPart(bytes)], { type: guessImageType(urls[i], bytes) }));
       blobUrls[i] = blobUrl;
     } catch {
@@ -133,7 +136,7 @@ export async function retryFailedPages(
     );
   }
 
-  return { blobUrls, failedPages: stillFailed };
+  return { blobUrls, failedPages: stillFailed, cachedPages: 0 };
 }
 
 export function categorizeFailure(e: unknown): string {
@@ -142,13 +145,13 @@ export function categorizeFailure(e: unknown): string {
     return 'The scraper proxy is unavailable or returned an error. Check that the proxy is running and reachable.';
   }
   if (msg.includes('No page images') || msg.includes('No pages')) {
-    return 'The source returned no image URLs for this chapter. The chapter may be unavailable or the source format may have changed.';
+    return 'The reading site returned no image URLs for this chapter. The chapter may be unavailable or the site format may have changed.';
   }
   if (msg.includes('timeout') || msg.includes('timed out') || msg.includes('abort')) {
     return 'The image fetch timed out. The CDN may be slow or blocking requests. Try retrying or switching groups.';
   }
   if (msg.match(/\b(4\d\d|5\d\d)\b/)) {
-    return `The source returned HTTP ${msg.match(/\b(4\d\d|5\d\d)\b/)?.[0] ?? 'error'}. The chapter may be restricted or unavailable.`;
+    return `The reading site returned HTTP ${msg.match(/\b(4\d\d|5\d\d)\b/)?.[0] ?? 'error'}. The chapter may be restricted or unavailable.`;
   }
   return msg;
 }

@@ -4,6 +4,7 @@ import type { ScrapedChapter } from '../scraper/engine';
 import { findSeries, getChapters, getPages } from '../scraper/scraper';
 import type { Source } from '../scraper/sources';
 import { recordHealth } from '../scraper/sourceHealth';
+import { readingSiteName } from '../ui/readingSiteCopy';
 
 export interface ChapterResolution {
   query: string;
@@ -31,7 +32,7 @@ export async function resolveChapters(source: Source, title: Title): Promise<Cha
           seriesUrl: series.url,
           seriesTitle: series.title || alias,
           chapters,
-          msg: `Matched "${series.title || alias}" on ${source.name}, but no chapters were extracted.`,
+          msg: `Matched "${series.title || alias}" on ${readingSiteName(source)}, but no chapters were extracted.`,
         };
       }
       await recordHealth(source.id, 'success', 'chapter-resolution');
@@ -40,7 +41,7 @@ export async function resolveChapters(source: Source, title: Title): Promise<Cha
         seriesUrl: series.url,
         seriesTitle: series.title || alias,
         chapters,
-        msg: `Matched "${series.title || alias}" on ${source.name}.`,
+        msg: `Matched "${series.title || alias}" on ${readingSiteName(source)}.`,
       };
     } catch (e) {
       await recordHealth(source.id, 'failure', 'chapter-resolution', e);
@@ -48,7 +49,7 @@ export async function resolveChapters(source: Source, title: Title): Promise<Cha
     }
   }
   await recordHealth(source.id, 'failure', 'chapter-resolution', 'No series match');
-  return { err: `No series match found on ${source.name}.` };
+  return { err: `No series match found on ${readingSiteName(source)}.` };
 }
 
 export async function inspectPages(source: Source, chapter: ScrapedChapter): Promise<PageInspection | { err: string }> {
@@ -56,7 +57,7 @@ export async function inspectPages(source: Source, chapter: ScrapedChapter): Pro
     const pageUrls = await getPages(source, chapter.url);
     if (pageUrls.length === 0) {
       await recordHealth(source.id, 'failure', 'page-load', 'No page images');
-      return { err: 'No page images were extracted from this chapter.' };
+      return { err: 'No page images were found for this chapter.' };
     }
     await recordHealth(source.id, 'success', 'page-load');
     return { chapterTitle: chapter.title || `Chapter ${chapter.number ?? '?'}`, pageUrls };

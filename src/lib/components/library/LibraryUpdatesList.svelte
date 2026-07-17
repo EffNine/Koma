@@ -1,23 +1,48 @@
 <script lang="ts">
   import { go } from '../../router';
   import type { UnreadUpdate } from '../../media/chapterSnapshots';
+  import type { RefreshProgress } from '../../media/backgroundRefresh';
   import { timeAgo } from '../../util';
 
   let {
     updates,
     updatesLoading,
     refreshingId,
+    refreshProgress,
     onRefresh,
+    onRefreshAll,
   }: {
     updates: UnreadUpdate[];
     updatesLoading: boolean;
     refreshingId: number | null;
+    refreshProgress: RefreshProgress | null;
     onRefresh: (mediaId: number) => void;
+    onRefreshAll: () => void;
   } = $props();
 </script>
 
+<div class="updates-head">
+  <div>
+    <h2 class="h2">Updates</h2>
+    {#if refreshProgress}
+      <p class="progress-copy">
+        Checking {refreshProgress.done} of {refreshProgress.total} titles{refreshProgress.current ? ` - ${refreshProgress.current}` : ''}
+      </p>
+    {/if}
+  </div>
+  <button class="btn small-btn" onclick={onRefreshAll} disabled={updatesLoading}>
+    {updatesLoading ? 'Checking...' : 'Refresh all'}
+  </button>
+</div>
+
 {#if updatesLoading}
-  <div class="card empty">Checking for updates…</div>
+  <div class="card empty">
+    {#if refreshProgress}
+      Checking {refreshProgress.done} of {refreshProgress.total} titles...
+    {:else}
+      Checking for updates...
+    {/if}
+  </div>
 {:else if updates.length === 0}
   <div class="card empty">No new updates for your followed titles.</div>
 {:else}
@@ -51,6 +76,9 @@
 
 <style>
   .rows { display: flex; flex-direction: column; gap: 8px; }
+  .updates-head { display: flex; justify-content: space-between; gap: 12px; align-items: flex-start; margin-bottom: 10px; }
+  .updates-head h2 { margin: 0; }
+  .progress-copy { margin: 4px 0 0; color: var(--muted); font-size: 13px; }
   .title-row { display: grid; grid-template-columns: auto minmax(0, 1fr) auto auto; align-items: center; gap: 10px; padding: 10px 12px; }
   .cover { width: 48px; aspect-ratio: 3 / 4; border-radius: var(--radius-sm); object-fit: cover; border: 1px solid var(--border); background: var(--elevated); flex-shrink: 0; }
   .row-main { min-width: 0; flex: 1; }

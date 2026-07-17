@@ -10,6 +10,8 @@
   import Genres from './routes/Genres.svelte';
   import Activity from './routes/Activity.svelte';
   import CommandSearch from './lib/components/CommandSearch.svelte';
+  import OnboardingWizard from './lib/components/OnboardingWizard.svelte';
+  import { shouldShowOnboarding } from './lib/onboarding';
 
   const links = [
     { href: '/', label: 'Home' },
@@ -40,6 +42,15 @@
 
   // ── Command search (Cmd/Ctrl+K) ──────────────────────────────────
   let showCommandSearch = $state(false);
+  let showOnboarding = $state(false);
+
+  $effect(() => {
+    void refreshOnboarding();
+  });
+
+  async function refreshOnboarding() {
+    showOnboarding = await shouldShowOnboarding();
+  }
 
   function onGlobalKeydown(e: KeyboardEvent) {
     if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -97,3 +108,7 @@
 
 <svelte:window onkeydown={onGlobalKeydown} />
 <CommandSearch show={showCommandSearch} onClose={() => { showCommandSearch = false; }} />
+<OnboardingWizard
+  show={showOnboarding}
+  onClose={() => { showOnboarding = false; }}
+/>

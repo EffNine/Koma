@@ -22,10 +22,10 @@
   <EmptyState id="reader-failed" context={err} compact />
   <div class="errbox-actions">
     <button class="btn" onclick={onRetry} disabled={loading}>Retry chapter</button>
-    <button class="btn" onclick={onFallback} disabled={loading}>Try another source</button>
+    <button class="btn" onclick={onFallback} disabled={loading}>Try another reading site</button>
     <button class="btn" onclick={onBack}>Back to Media</button>
     {#if chapterUrl}
-      <a href={chapterUrl} target="_blank" rel="noopener">Open source chapter ↗</a>
+      <a href={chapterUrl} target="_blank" rel="noopener">Open reading-site chapter ↗</a>
     {/if}
   </div>
 </div>

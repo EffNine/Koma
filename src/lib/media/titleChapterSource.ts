@@ -6,6 +6,7 @@ import {
   rankSources,
   type SourceHealth,
 } from '../scraper/sourceHealth';
+import { titleNotFoundMessage } from '../ui/readingSiteCopy';
 import { getTitlePreference, type TitlePreference } from './titlePreferences';
 import { resolveChapters, type ChapterResolution } from './chapterResolver';
 
@@ -89,6 +90,6 @@ export async function resolveTitleChapterSource(
     status: 'not-found',
     sources: ranked,
     preference,
-    message: 'No chapters found from any enabled source. Add or enable a source in Settings.',
+    message: titleNotFoundMessage(ranked.map((source) => source.name)),
   };
 }

@@ -14,6 +14,18 @@ export interface RefreshProgress {
   current?: string;
 }
 
+export function isSnapshotStale(checkedAt: number | undefined, now = Date.now(), force = false): boolean {
+  if (force) return true;
+  if (!checkedAt) return true;
+  return now - checkedAt >= BACKGROUND_REFRESH_INTERVAL_MS;
+}
+
+export function chunkForRefresh<T>(items: T[], batchSize = BATCH_SIZE): T[][] {
+  const out: T[][] = [];
+  for (let i = 0; i < items.length; i += batchSize) out.push(items.slice(i, i + batchSize));
+  return out;
+}
+
 function titleStub(title: TrackedTitle): Title {
   return {
     id: title.mediaId,
@@ -62,7 +74,7 @@ export async function refreshFollowedTitlesStaggered(
     if (!force) {
       for (const s of allSources) {
         const snap = await getSnapshot(title.mediaId, s.id);
-        if (!snap || Date.now() - snap.checkedAt >= BACKGROUND_REFRESH_INTERVAL_MS) {
+        if (isSnapshotStale(snap?.checkedAt)) {
           isStale = true;
           break;
         }
@@ -76,8 +88,9 @@ export async function refreshFollowedTitlesStaggered(
   let done = 0;
   onProgress?.({ done: 0, total: stale.length });
 
-  for (let i = 0; i < stale.length; i += BATCH_SIZE) {
-    const batch = stale.slice(i, i + BATCH_SIZE);
+  const batches = chunkForRefresh(stale);
+  for (let i = 0; i < batches.length; i++) {
+    const batch = batches[i];
     await Promise.all(
       batch.map(async (title) => {
         onProgress?.({ done, total: stale.length, current: title.name });
@@ -96,7 +109,7 @@ export async function refreshFollowedTitlesStaggered(
         onProgress?.({ done, total: stale.length, current: title.name });
       }),
     );
-    if (i + BATCH_SIZE < stale.length) {
+    if (i < batches.length - 1) {
       await new Promise((r) => setTimeout(r, BATCH_DELAY_MS));
     }
   }
@@ -108,7 +121,7 @@ export async function computeUpdatesForFollowed(
 ): Promise<UnreadUpdate[]> {
   const progressMap = new Map<number, { chapterNumber?: string }>();
   const seen = new Set<number>();
-  for (const p of progress.sort((a, b) => b.updatedAt - a.updatedAt)) {
+  for (const p of [...progress].sort((a, b) => b.updatedAt - a.updatedAt)) {
     if (!seen.has(p.mediaId)) {
       seen.add(p.mediaId);
       progressMap.set(p.mediaId, { chapterNumber: p.chapterNumber });

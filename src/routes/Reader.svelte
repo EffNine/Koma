@@ -57,6 +57,7 @@
   let contrast = $state(100);
   let zoom = $state(100);
   let loadCount = $state(0);
+  let cachedPages = $state(0);
   let abortController: AbortController | null = null;
   let persistTimer: ReturnType<typeof setTimeout> | undefined;
   let observer: IntersectionObserver | null = null;
@@ -313,6 +314,7 @@
     fallbackAttempted = false;
     showResumeNotice = false;
     loadCount = 0;
+    cachedPages = 0;
     t = undefined;
     source = undefined;
     failedPages = [];
@@ -392,6 +394,7 @@
       if (signal.aborted) return;
       pageBlobs = result.blobUrls;
       failedPages = result.failedPages;
+      cachedPages = result.cachedPages;
       loadCount = urls.length - failedPages.length;
       if (failedPages.length) {
         note = `Some pages could not be loaded from the source CDNs: ${failedPages.join(', ')}.`;
@@ -665,6 +668,7 @@
     {pageLoadLabel}
     {pageLoadPercent}
     {loadCount}
+    {cachedPages}
     {totalPages}
     {prevChapter}
     {nextChapter}

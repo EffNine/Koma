@@ -1,5 +1,6 @@
 <script lang="ts">
   import type { ChapterGroup } from '../../media/chapterGroups';
+  import type { DownloadProgress } from '../../reader/chapterCache';
   import { groupLabel } from '../../ui/formatting';
   import { relativeTime } from '../../util';
 
@@ -8,17 +9,25 @@
     readChapters,
     groupLinks,
     preferredGroup,
+    cached,
+    downloading,
+    downloadProgress,
     onReadChapter,
     onReadAlt,
     onMarkUnread,
+    onDownloadChapter,
   }: {
     group: ChapterGroup;
     readChapters: Set<string>;
     groupLinks: Map<string, string>;
     preferredGroup: string | undefined;
+    cached: boolean;
+    downloading: boolean;
+    downloadProgress: DownloadProgress | null;
     onReadChapter: (ch: import('../../scraper/engine').ScrapedChapter) => void;
     onReadAlt: (g: ChapterGroup, value: string) => void;
     onMarkUnread: (num: string | null) => void;
+    onDownloadChapter: (ch: import('../../scraper/engine').ScrapedChapter) => void;
   } = $props();
 
   let c = $derived(group.preferred);
@@ -55,6 +64,15 @@
   </div>
   <div class="chap-col-actions">
     <button class="btn small-btn btn-primary" onclick={() => onReadChapter(c)} title="Read">▶</button>
+    <button class="btn small-btn" onclick={() => onDownloadChapter(c)} disabled={downloading} title={cached ? 'Downloaded' : 'Download for offline'}>
+      {#if downloading}
+        {downloadProgress?.total ? `${downloadProgress.loaded}/${downloadProgress.total}` : '...'}
+      {:else if cached}
+        ✓
+      {:else}
+        ⬇
+      {/if}
+    </button>
     {#if group.number}
       <button class="btn small-btn" onclick={() => onMarkUnread(group.number)} title="Mark unread">↩</button>
     {/if}
@@ -78,6 +96,7 @@
   .chap-group-select { font-size: 12px; color: var(--text); background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-sm); padding: 3px 6px; max-width: 180px; }
   .chap-col-actions { display: flex; gap: 4px; }
   .small-btn { min-height: 30px; padding: 0 8px; font-size: 12px; min-width: 30px; text-align: center; }
+  .small-btn[disabled] { opacity: .65; cursor: wait; }
   @media (max-width: 800px) {
     .chapter-row { grid-template-columns: 1fr auto; grid-template-rows: auto auto; }
     .chap-col-chap { grid-column: 1; grid-row: 1; }

@@ -9,8 +9,8 @@ function assert(cond: boolean, msg: string) {
 }
 
 const sources = emptyState('sources');
-assert(sources.title === 'No sources yet', 'sources title');
-assert(sources.action?.label === 'Add Source', 'sources primary action');
+assert(sources.title === 'No reading sites yet', 'sources title');
+assert(sources.action?.label === 'Add Reading Site', 'sources primary action');
 assert(sources.action?.href === '/settings', 'sources action href');
 
 const library = emptyState('library');
@@ -28,6 +28,7 @@ assert(history.title === 'No activity yet', 'history title');
 const chapters = emptyState('chapters');
 assert(chapters.title === 'No chapters found', 'chapters title');
 assert(chapters.action?.href === '/settings', 'chapters action href');
+assert(chapters.action?.label === 'Manage Reading Sites', 'chapters action label');
 
 const updates = emptyState('updates');
 assert(updates.title === 'No new updates', 'updates title');

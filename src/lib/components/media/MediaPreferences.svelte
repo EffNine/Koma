@@ -37,7 +37,7 @@
     </select>
   </div>
   <div class="pref-block">
-    <span class="pref-label">Source</span>
+    <span class="pref-label">Reading Site</span>
     <select class="pref-select" value={titlePref?.preferredSourceId ?? ''} onchange={(e) => onSetPreferredSource(e.currentTarget.value || undefined)}>
       <option value="">Auto ({chapterSource?.name ?? 'best'})</option>
       {#each sources as s (s.id)}
@@ -54,14 +54,14 @@
 </div>
 <div class="source-line">
   {#if chapterLoading}
-    Resolving chapters from enabled sources...
+    Resolving chapters from enabled reading sites...
   {:else if chapterSource}
     Chapters from {chapterSource.name}{#if preferredGroup} with {preferredGroup} preferred{/if}
     {#if chapterSource.name === 'MangaDex'}
       <span class="attribution">— Chapters provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a> and scanlation groups.</span>
     {/if}
   {:else if sources.length === 0}
-    Add a source in Settings to start reading.
+    Add a reading site in Settings to start reading.
   {:else if chapterErr}
     {chapterErr}
   {/if}

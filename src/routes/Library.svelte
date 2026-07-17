@@ -9,9 +9,12 @@
     type ReadingList,
   } from '../lib/tracker/local';
   import { syncAniListLibrary } from '../lib/tracker/sync';
-  import { computeUnreadUpdates, type UnreadUpdate } from '../lib/media/chapterSnapshots';
-  import { enabledSources } from '../lib/scraper/sources';
-  import { resolveChapters } from '../lib/media/chapterResolver';
+  import type { UnreadUpdate } from '../lib/media/chapterSnapshots';
+  import {
+    computeUpdatesForFollowed,
+    refreshFollowedTitlesStaggered,
+    type RefreshProgress,
+  } from '../lib/media/backgroundRefresh';
   import { db } from '../lib/db';
   import EmptyState from '../lib/components/EmptyState.svelte';
   import Toast from '../lib/components/Toast.svelte';
@@ -31,6 +34,7 @@
   let updates = $state<UnreadUpdate[]>([]);
   let updatesLoading = $state(false);
   let refreshingId = $state<number | null>(null);
+  let refreshProgress = $state<RefreshProgress | null>(null);
   let titleNames = $state<Map<number, string>>(new Map());
   let anilistSyncing = $state(false);
   let toast = $state<{ text: string; tone: 'ok' | 'err' | 'info' } | null>(null);
@@ -87,28 +91,7 @@
   async function loadUpdates() {
     updatesLoading = true;
     try {
-      const allSources = await enabledSources();
-      if (allSources.length === 0) { updates = []; return; }
-
-      const sourceMap = new Map<number, { source: import('../lib/scraper/sources').Source; seriesUrl: string }>();
-      const progressMap = new Map<number, { chapterNumber?: string }>();
-
-      for (const title of followed) {
-        const p = progressByMedia.get(title.mediaId);
-        if (p) progressMap.set(title.mediaId, { chapterNumber: p.chapterNumber });
-
-        for (const s of allSources) {
-          try {
-            const result = await resolveChapters(s, { id: title.mediaId, title: { english: title.name, romaji: title.name, native: title.name }, name: title.name, cover: title.cover ?? '' } as import('../lib/catalog/types').Title);
-            if (!('err' in result) && result.chapters.length > 0) {
-              sourceMap.set(title.mediaId, { source: s, seriesUrl: result.seriesUrl });
-              break;
-            }
-          } catch { continue; }
-        }
-      }
-
-      updates = await computeUnreadUpdates(followed, progressMap, sourceMap);
+      updates = await computeUpdatesForFollowed(followed, progress);
     } catch (e) {
       console.error('Failed to load updates:', e);
     } finally {
@@ -119,26 +102,33 @@
   async function refreshTitle(mediaId: number) {
     refreshingId = mediaId;
     try {
-      const allSources = await enabledSources();
       const title = followed.find((t) => t.mediaId === mediaId);
       if (!title) return;
-
-      for (const s of allSources) {
-        try {
-          const result = await resolveChapters(s, { id: mediaId, title: { english: title.name, romaji: title.name, native: title.name }, name: title.name, cover: title.cover ?? '' } as import('../lib/catalog/types').Title);
-          if (!('err' in result) && result.chapters.length > 0) {
-            const { refreshFollowedTitleChapters } = await import('../lib/media/chapterSnapshots');
-            await refreshFollowedTitleChapters(mediaId, s, result.seriesUrl);
-            break;
-          }
-        } catch { continue; }
-      }
+      await refreshFollowedTitlesStaggered([title], undefined, true);
       await loadUpdates();
       toast = { text: `${title.name} updated`, tone: 'ok' };
     } catch (e) {
       toast = { text: 'Update check failed: ' + String(e), tone: 'err' };
     } finally {
       refreshingId = null;
+    }
+  }
+
+  async function refreshAllUpdates() {
+    if (followed.length === 0) return;
+    updatesLoading = true;
+    refreshProgress = { done: 0, total: followed.length };
+    try {
+      await refreshFollowedTitlesStaggered(followed, (p) => {
+        refreshProgress = p;
+      }, true);
+      updates = await computeUpdatesForFollowed(followed, progress);
+      toast = { text: 'Followed titles checked for updates', tone: 'ok' };
+    } catch (e) {
+      toast = { text: 'Update check failed: ' + String(e), tone: 'err' };
+    } finally {
+      refreshProgress = null;
+      updatesLoading = false;
     }
   }
 
@@ -227,7 +217,9 @@
     {updates}
     {updatesLoading}
     {refreshingId}
+    {refreshProgress}
     onRefresh={refreshTitle}
+    onRefreshAll={refreshAllUpdates}
   />
 {:else if tab === 'all' || tab === 'reading' || tab === 'plan' || tab === 'completed'}
   {#if followed.length === 0}

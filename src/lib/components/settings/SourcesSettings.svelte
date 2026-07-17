@@ -43,8 +43,8 @@
 </script>
 
 <div class="card sec">
-  <h2>Sources</h2>
-  <p class="hint">Add, check, and prioritize chapter sources.</p>
+  <h2>Reading Sites</h2>
+  <p class="hint">Add, check, and prioritize sites Koma can read chapters from.</p>
   <form class="row" onsubmit={onAdd}>
     <input bind:value={urlInput} placeholder="https://manga-example.site" class="inp" />
     <button class="btn btn-primary" type="submit" disabled={busy}>{busy ? 'Checking…' : 'Add & Check'}</button>
@@ -55,7 +55,7 @@
     <div class="saved-banner">
       <div class="saved-copy">
         <strong>Saved to app</strong>
-        <span>{lastSavedSource.name} is now in your saved Sources list below.</span>
+        <span>{lastSavedSource.name} is now in your saved reading sites below.</span>
       </div>
       <div class="saved-meta">
         <span>{savedAt(lastSavedSource.addedAt)}</span>
@@ -63,7 +63,7 @@
       </div>
     </div>
   {/if}
-  <div class="summary">{sources.length} saved source{sources.length === 1 ? '' : 's'} in this app • {readyCount} ready</div>
+  <div class="summary">{sources.length} saved reading site{sources.length === 1 ? '' : 's'} in this app • {readyCount} ready</div>
 
   <div class="slist">
     {#each sources as s, i (s.id)}
@@ -93,7 +93,7 @@
         </div>
       </div>
     {:else}
-      <div class="empty">No sources saved yet. Add one above and the app will check it automatically.</div>
+      <div class="empty">No reading sites saved yet. Add one above and the app will check it automatically.</div>
     {/each}
   </div>
 </div>

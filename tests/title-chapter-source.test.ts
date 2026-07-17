@@ -134,7 +134,7 @@ const notFound = await resolveTitleChapterSource(title, {
 });
 assert(notFound.status === 'not-found', 'all misses returns not-found');
 assert(
-  notFound.status === 'not-found' && notFound.message.includes('No chapters found'),
+  notFound.status === 'not-found' && notFound.message.includes('This title was not found on a'),
   'not-found includes user-facing message',
 );
 

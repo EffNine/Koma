@@ -3,6 +3,7 @@ export type ConfirmActionId =
   | 'removeSource'
   | 'clearCache'
   | 'clearChapterCache'
+  | 'clearTitleChapterCache'
   | 'clearHistory'
   | 'disconnectTracker'
   | 'clearCfCookies'
@@ -50,6 +51,14 @@ export function confirmPrompt(action: ConfirmActionId, subject?: string): Confir
       return {
         title: 'Clear chapter cache?',
         body: 'Downloaded chapter images will be removed. They will re-download when opened.',
+        confirm: 'Clear',
+        cancel: 'Cancel',
+        destructive: true,
+      };
+    case 'clearTitleChapterCache':
+      return {
+        title: `Clear cached chapters for ${subject ?? 'this title'}?`,
+        body: 'Downloaded images for this title will be removed. They will re-download when opened.',
         confirm: 'Clear',
         cancel: 'Cancel',
         destructive: true,

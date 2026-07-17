@@ -15,6 +15,7 @@
     savePreferredGroup,
     type TitlePreference,
   } from '../lib/media/titlePreferences';
+  import { isPinned, togglePinned } from '../lib/media/pinnedTitles';
   import { resolveTitleChapterSource } from '../lib/media/titleChapterSource';
   import { db } from '../lib/db';
   import {
@@ -27,6 +28,12 @@
   } from '../lib/tracker/local';
   import { groupChapters, type ChapterGroup } from '../lib/media/chapterGroups';
   import { groupUrl } from '../lib/scraper/groupMapping';
+  import { getPages } from '../lib/scraper/scraper';
+  import {
+    downloadChapter,
+    isChapterCached,
+    type DownloadProgress,
+  } from '../lib/reader/chapterCache';
   import EmptyState from '../lib/components/EmptyState.svelte';
   import Toast from '../lib/components/Toast.svelte';
   import ConfirmDialog from '../lib/components/ConfirmDialog.svelte';
@@ -46,6 +53,7 @@
   let chapterLoading = $state(false);
   let chapterErr = $state('');
   let followed = $state(false);
+  let pinned = $state(false);
   let followBusy = $state(false);
   let groupLinks = $state<Map<string, string>>(new Map());
   let progress = $state<{ chapterNumber?: string } | undefined>();
@@ -53,6 +61,9 @@
   let preferredGroup = $state<string | undefined>(undefined);
   let titlePref = $state<TitlePreference | undefined>(undefined);
   let readingList = $state<ReadingList | undefined>(undefined);
+  let cachedChapterUrls = $state<Set<string>>(new Set());
+  let downloadingChapterUrl = $state('');
+  let downloadProgress = $state<DownloadProgress | null>(null);
 
   // Feedback + confirmation
   let toast = $state<{ text: string; tone: 'ok' | 'err' | 'warn' | 'info' } | null>(null);
@@ -64,6 +75,7 @@
     if (!cur) return;
     loading = true;
     err = '';
+    pinned = false;
     chapters = [];
     chapterSource = undefined;
     matchUrl = '';
@@ -73,6 +85,9 @@
         t = detail?.title;
         followed = detail?.followed ?? false;
         loading = false;
+        if (detail?.title) {
+          void isPinned(detail.title.id).then((value) => { pinned = value; });
+        }
       })
       .catch((e) => { err = String(e); loading = false; });
   });
@@ -118,6 +133,7 @@
       loadProgress(result.source.id);
       loadReadChapters(result.source.id);
       loadGroupLinks(result.chapters);
+      loadCachedChapterUrls(result.source.id, result.chapters);
       return;
     }
 
@@ -134,6 +150,15 @@
       if (url) links.set(name!, url);
     }
     groupLinks = links;
+  }
+
+  async function loadCachedChapterUrls(sourceId: string, chapters: ScrapedChapter[]) {
+    if (!t) return;
+    const cached = new Set<string>();
+    for (const chapter of chapters) {
+      if (await isChapterCached(t.id, sourceId, chapter.url)) cached.add(chapter.url);
+    }
+    cachedChapterUrls = cached;
   }
 
   async function loadProgress(sourceId: string) {
@@ -247,6 +272,20 @@
     else await doFollow();
   }
 
+  async function onTogglePinned() {
+    if (!t) return;
+    try {
+      if (!followed) {
+        await followDetail(t);
+        followed = true;
+      }
+      pinned = await togglePinned(t.id);
+      toast = { text: pinned ? `Pinned ${name}` : `Unpinned ${name}`, tone: 'ok' };
+    } catch (e) {
+      toast = { text: 'Pin failed: ' + String(e), tone: 'err' };
+    }
+  }
+
   async function onSetReadingList(next: ReadingList | undefined) {
     if (!t) return;
     await setReadingList(t.id, next);
@@ -258,7 +297,7 @@
     if (!t) return;
     await savePreferredSource(t.id, sourceId);
     titlePref = { ...(titlePref ?? { mediaId: t.id, updatedAt: 0 }), preferredSourceId: sourceId, updatedAt: Date.now() };
-    toast = { text: sourceId ? 'Preferred source saved' : 'Reverted to automatic source', tone: 'ok' };
+    toast = { text: sourceId ? 'Preferred reading site saved' : 'Reverted to automatic reading site', tone: 'ok' };
   }
 
   async function readAlt(group: ChapterGroup, selectedValue: string) {
@@ -281,6 +320,29 @@
       chapterTitle: chapter.title,
     });
     go(`/reader/${t.id}/${source.id}/${encodeURIComponent(matchUrl)}/${encodeURIComponent(chapter.url)}`);
+  }
+
+  async function downloadMediaChapter(chapter: ScrapedChapter) {
+    if (!t) return;
+    const source = chapterSource ?? sources.find((s) => s.enabled);
+    if (!source || !matchUrl || downloadingChapterUrl) return;
+    downloadingChapterUrl = chapter.url;
+    downloadProgress = { loaded: 0, total: 0 };
+    try {
+      const pages = await getPages(source, chapter.url);
+      const result = await downloadChapter(t.id, source.id, chapter.url, pages, chapter.url, (p) => {
+        downloadProgress = p;
+      });
+      cachedChapterUrls = new Set(cachedChapterUrls).add(chapter.url);
+      toast = result.ok
+        ? { text: `Downloaded chapter ${chapter.number ?? ''}`.trim(), tone: 'ok' }
+        : { text: `Downloaded with ${result.failedPages.length} failed page${result.failedPages.length === 1 ? '' : 's'}`, tone: 'warn' };
+    } catch (e) {
+      toast = { text: 'Download failed: ' + String(e), tone: 'err' };
+    } finally {
+      downloadingChapterUrl = '';
+      downloadProgress = null;
+    }
   }
 
   async function markUnreadNumber(chapterNumber: string | null) {
@@ -319,6 +381,7 @@
   <MediaHeader
     title={t}
     {followed}
+    {pinned}
     {followBusy}
     progressChapter={progress?.chapterNumber}
     hasChapters={chapters.length > 0}
@@ -326,6 +389,7 @@
     onStartReading={startReading}
     onStartFromBeginning={startFromBeginning}
     onToggleFollow={toggleFollow}
+    onTogglePinned={onTogglePinned}
     onBack={back}
   />
 
@@ -356,9 +420,13 @@
     {readChapters}
     {groupLinks}
     {preferredGroup}
+    {cachedChapterUrls}
+    {downloadingChapterUrl}
+    {downloadProgress}
     onReadChapter={readChapter}
     onReadAlt={readAlt}
     onMarkUnread={markUnreadNumber}
+    onDownloadChapter={downloadMediaChapter}
     onGotoChapter={onGotoChapter}
     onPrevPage={() => (chapterPage = chapterPage - 1)}
     onNextPage={() => (chapterPage = chapterPage + 1)}

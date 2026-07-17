@@ -28,13 +28,15 @@ jobs:
       - run: pnpm typecheck
       - id: list-tests
         run: |
-          TESTS=$(ls tests/*.test.ts | python3 -c 'import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
+          # Exclude pwa.test.ts from matrix — it does a full vite build
+          # which takes >15min on GitHub Actions runners
+          TESTS=$(ls tests/*.test.ts | grep -v pwa | python3 -c 'import sys,json; print(json.dumps([l.strip() for l in sys.stdin if l.strip()]))')
           echo "test-matrix=$TESTS" >> "$GITHUB_OUTPUT"
 
   test:
     needs: setup
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 5
     strategy:
       fail-fast: false
       matrix:
@@ -50,6 +52,24 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - name: Run ${{ matrix.test-file }}
-        run: timeout 900 pnpm exec tsx "${{ matrix.test-file }}"
+        run: timeout 90 pnpm exec tsx "${{ matrix.test-file }}"
         env:
           NODE_OPTIONS: "--max-old-space-size=4096"
+
+  pwa-test:
+    needs: setup
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 11.9.0
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - run: pnpm install
+      - name: Run pwa test
+        run: timeout 1200 pnpm exec tsx "tests/pwa.test.ts"

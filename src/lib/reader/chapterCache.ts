@@ -1,4 +1,5 @@
 import { db } from '../db';
+import { fetchBytes } from '../net';
 
 export interface ChapterCacheEntry {
   key: string;
@@ -129,4 +130,97 @@ export async function removeCachedChaptersForMedia(mediaId: number): Promise<voi
     await db.chapterCachePages.where('chapterKey').equals(entry.key).delete();
   }
   await db.chapterCache.where('mediaId').equals(mediaId).delete();
+}
+
+export interface DownloadProgress {
+  loaded: number;
+  total: number;
+}
+
+export interface CacheByTitle {
+  mediaId: number;
+  titleName: string;
+  chapterCount: number;
+  sizeBytes: number;
+}
+
+/** Proactively download chapter page images for offline reading. */
+export async function downloadChapter(
+  mediaId: number,
+  sourceId: string,
+  chapterUrl: string,
+  pageUrls: string[],
+  referer: string,
+  onProgress?: (p: DownloadProgress) => void,
+): Promise<{ ok: boolean; failedPages: number[] }> {
+  const ck = chapterKey(mediaId, sourceId, chapterUrl);
+  let totalBytes = 0;
+  const failedPages: number[] = [];
+
+  for (let i = 0; i < pageUrls.length; i++) {
+    onProgress?.({ loaded: i, total: pageUrls.length });
+    try {
+      const existing = await db.chapterCachePages.get(pageKey(ck, i));
+      if (existing?.blob) {
+        totalBytes += existing.blob.size;
+        continue;
+      }
+      const bytes = await fetchBytes(pageUrls[i], { referer });
+      const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart], {
+        type: guessImageType(pageUrls[i], bytes),
+      });
+      totalBytes += blob.size;
+      await db.chapterCachePages.put({
+        key: pageKey(ck, i),
+        chapterKey: ck,
+        pageIndex: i,
+        blob,
+      });
+    } catch {
+      failedPages.push(i + 1);
+    }
+  }
+
+  if (totalBytes > 0) {
+    await db.chapterCache.put({
+      key: ck,
+      mediaId,
+      sourceId,
+      chapterUrl,
+      createdAt: Date.now(),
+      sizeBytes: totalBytes,
+    });
+  }
+
+  onProgress?.({ loaded: pageUrls.length, total: pageUrls.length });
+  return { ok: failedPages.length === 0, failedPages };
+}
+
+export async function getCacheBreakdownByTitle(
+  titleNames: Map<number, string>,
+): Promise<CacheByTitle[]> {
+  const entries = await db.chapterCache.toArray();
+  const byMedia = new Map<number, { count: number; size: number }>();
+  for (const e of entries) {
+    const cur = byMedia.get(e.mediaId) ?? { count: 0, size: 0 };
+    cur.count++;
+    cur.size += e.sizeBytes;
+    byMedia.set(e.mediaId, cur);
+  }
+  return [...byMedia.entries()]
+    .map(([mediaId, v]) => ({
+      mediaId,
+      titleName: titleNames.get(mediaId) ?? `Title ${mediaId}`,
+      chapterCount: v.count,
+      sizeBytes: v.size,
+    }))
+    .sort((a, b) => b.sizeBytes - a.sizeBytes);
+}
+
+function guessImageType(url: string, bytes: Uint8Array): string {
+  const ext = url.split('.').pop()?.toLowerCase();
+  if (ext === 'png') return 'image/png';
+  if (ext === 'webp') return 'image/webp';
+  if (ext === 'gif') return 'image/gif';
+  return 'image/jpeg';
 }

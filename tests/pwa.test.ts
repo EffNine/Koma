@@ -57,17 +57,25 @@ async function main() {
   // 2. Start preview
   const port = await freePort();
   const serverUrl = `http://127.0.0.1:${port}`;
+  // Spawn in a new process group so we can kill the whole tree (pnpm -> node -> vite preview).
   const preview = spawn('pnpm', ['preview', '--port', String(port), '--host', '127.0.0.1'], {
-    cwd: ROOT, stdio: 'pipe', shell: true,
+    cwd: ROOT,
+    stdio: 'pipe',
+    shell: false,
+    detached: true,
   });
 
   let killed = false;
   function cleanup() {
     if (killed) return;
     killed = true;
-    preview.kill('SIGTERM');
-    // Give it a moment, then SIGKILL
-    setTimeout(() => { try { preview.kill('SIGKILL'); } catch { /* ok */ } }, 2000);
+    // Kill the entire process group created by the detached spawn.
+    if (preview.pid) {
+      try { process.kill(-preview.pid, 'SIGTERM'); } catch { /* ok */ }
+      setTimeout(() => {
+        try { process.kill(-preview.pid, 'SIGKILL'); } catch { /* ok */ }
+      }, 2000);
+    }
   }
   process.on('exit', cleanup);
   process.on('SIGINT', () => { cleanup(); process.exit(); });

@@ -73,4 +73,5 @@ jobs:
           cache: pnpm
       - run: pnpm install
       - name: Run pwa test
-        run: timeout 2700 pnpm exec tsx "tests/pwa.test.ts"
+        # Use exact path to tsx so `timeout` signals the test process directly.
+        run: timeout 2700 ./node_modules/.bin/tsx "tests/pwa.test.ts"

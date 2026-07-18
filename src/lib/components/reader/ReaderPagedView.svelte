@@ -1,6 +1,7 @@
 <script lang="ts">
   import type { ReaderDirection } from '../../reader/state';
   import type { ImageFit } from '../../reader/settings';
+  import { failedPageLabel } from '../../reader/pageLoadUi';
 
   let {
     currentBlob,
@@ -9,8 +10,11 @@
     imageFit,
     canPrev,
     canNext,
+    pageFailed = false,
+    retrying = false,
     onStep,
     onPageClick,
+    onRetryFailed,
   }: {
     currentBlob: string;
     page: number;
@@ -18,8 +22,11 @@
     imageFit: ImageFit;
     canPrev: boolean;
     canNext: boolean;
+    pageFailed?: boolean;
+    retrying?: boolean;
     onStep: (delta: number) => void;
     onPageClick: (e: MouseEvent) => void;
+    onRetryFailed?: () => void;
   } = $props();
 </script>
 
@@ -37,6 +44,15 @@
         decoding="async"
         draggable="false"
       />
+    {:else if pageFailed}
+      <div class="page-placeholder failed">
+        <span>{failedPageLabel(page)}</span>
+        {#if onRetryFailed}
+          <button class="btn retry-btn" onclick={(e) => { e.stopPropagation(); onRetryFailed(); }} disabled={retrying}>
+            {retrying ? 'Retrying…' : 'Retry page'}
+          </button>
+        {/if}
+      </div>
     {:else}
       <div class="page-placeholder">Loading page {page + 1}…</div>
     {/if}
@@ -53,7 +69,9 @@
   .page-image { max-width: 100%; max-height: 76vh; object-fit: contain; border-radius: calc(var(--radius-sm) - 2px); box-shadow: 0 20px 60px rgba(0, 0, 0, .36); filter: brightness(var(--reader-brightness, 100%)) contrast(var(--reader-contrast, 100%)); transform: scale(calc(var(--reader-zoom, 100) / 100)); transition: opacity .25s ease, filter .2s ease; }
   .page-image.pan-mode { cursor: grab; max-width: none; max-height: none; }
   .page-image.pan-mode:active { cursor: grabbing; }
-  .page-placeholder { min-height: min(78vh, 920px); aspect-ratio: 3 / 4; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: var(--radius-sm); width: 100%; background: var(--elevated); animation: pulse 1.8s ease-in-out infinite; }
+  .page-placeholder { min-height: min(78vh, 920px); aspect-ratio: 3 / 4; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: var(--radius-sm); width: 100%; background: var(--elevated); animation: pulse 1.8s ease-in-out infinite; }
+  .page-placeholder.failed { animation: none; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, var(--elevated)); }
+  .retry-btn { pointer-events: auto; }
   @keyframes pulse { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
   @media (max-width: 900px) {
     .paged { grid-template-columns: 1fr; min-height: auto; }

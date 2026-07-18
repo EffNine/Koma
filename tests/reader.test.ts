@@ -12,6 +12,12 @@ import {
   sameNumberChapters,
 } from '../src/lib/reader/chapterNavigation.ts';
 import { categorizeFailure } from '../src/lib/reader/chapterLoader.ts';
+import {
+  isFailedPage,
+  pagesStillLoading,
+  fallbackSwitchMessage,
+  failedPageLabel,
+} from '../src/lib/reader/pageLoadUi.ts';
 import type { ScrapedChapter } from '../src/lib/scraper/engine';
 
 let failures = 0;
@@ -137,6 +143,15 @@ assert(
   categorizeFailure(new Error('Something unexpected')) === 'Error: Something unexpected',
   'categorizeFailure passes through unknown errors',
 );
+
+assert(isFailedPage(0, [1, 3]) === true, 'isFailedPage maps 0-based index to 1-based failed list');
+assert(isFailedPage(1, [1, 3]) === false, 'isFailedPage is false for pages not in the failed list');
+assert(pagesStillLoading(10, 4, []) === true, 'pagesStillLoading is true while images are in flight');
+assert(pagesStillLoading(10, 8, [9, 10]) === false, 'pagesStillLoading is false when remaining pages failed');
+assert(pagesStillLoading(0, 0, []) === false, 'pagesStillLoading is false before page URLs exist');
+assert(fallbackSwitchMessage('ComicK') === 'Opened on ComicK instead', 'fallbackSwitchMessage names the source');
+assert(fallbackSwitchMessage('  ') === 'Opened on another reading site instead', 'fallbackSwitchMessage has a generic fallback');
+assert(failedPageLabel(4) === 'Page 5 failed to load', 'failedPageLabel is 1-based for display');
 
 // Reader state persistence
 await saveReaderState({

@@ -1,16 +1,23 @@
 <script lang="ts">
   import type { ImageFit } from '../../reader/settings';
+  import { failedPageLabel, isFailedPage } from '../../reader/pageLoadUi';
 
   let {
     pageUrls,
     pageBlobs,
     imageFit,
+    failedPages = [],
+    retrying = false,
     pageAnchor,
+    onRetryFailed,
   }: {
     pageUrls: string[];
     pageBlobs: string[];
     imageFit: ImageFit;
+    failedPages?: number[];
+    retrying?: boolean;
     pageAnchor: (node: HTMLElement, index: number) => { update: (nextIndex: number) => void; destroy: () => void };
+    onRetryFailed?: () => void;
   } = $props();
 </script>
 
@@ -26,6 +33,15 @@
           decoding="async"
           draggable="false"
         />
+      {:else if isFailedPage(i, failedPages)}
+        <div class="page-placeholder failed">
+          <span>{failedPageLabel(i)}</span>
+          {#if onRetryFailed}
+            <button class="btn retry-btn" onclick={() => onRetryFailed()} disabled={retrying}>
+              {retrying ? 'Retrying…' : 'Retry failed pages'}
+            </button>
+          {/if}
+        </div>
       {:else}
         <div class="page-placeholder">Loading page {i + 1}…</div>
       {/if}
@@ -39,6 +55,8 @@
   .strip-image { width: 100%; display: block; user-select: none; -webkit-user-drag: none; transform: translateZ(0) scale(calc(var(--reader-zoom, 100) / 100)); backface-visibility: hidden; filter: brightness(var(--reader-brightness, 100%)) contrast(var(--reader-contrast, 100%)); transition: opacity .25s ease, filter .2s ease; }
   .strip-screen { max-width: 100%; max-height: 100vh; object-fit: contain; margin: 0 auto; }
   .strip-original { width: auto; max-width: 100%; margin: 0 auto; }
-  .page-placeholder { min-height: min(78vh, 920px); aspect-ratio: 3 / 4; display: flex; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: var(--radius-sm); width: 100%; background: var(--elevated); animation: pulse 1.8s ease-in-out infinite; }
+  .page-placeholder { min-height: min(78vh, 920px); aspect-ratio: 3 / 4; display: flex; flex-direction: column; gap: 12px; align-items: center; justify-content: center; color: var(--muted); font-size: 14px; border: 1px dashed var(--border); border-radius: var(--radius-sm); width: 100%; background: var(--elevated); animation: pulse 1.8s ease-in-out infinite; }
+  .page-placeholder.failed { animation: none; color: var(--danger); border-color: color-mix(in srgb, var(--danger) 35%, var(--border)); background: color-mix(in srgb, var(--danger) 8%, var(--elevated)); }
+  .retry-btn { pointer-events: auto; }
   @keyframes pulse { 0%, 100% { opacity: .6; } 50% { opacity: 1; } }
 </style>

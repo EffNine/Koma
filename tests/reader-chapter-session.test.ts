@@ -128,6 +128,14 @@ assert(
   missingSourceRedirect.status === 'redirect' && missingSourceRedirect.route.includes('/reader/1/fallback/'),
   'missing source redirect uses fallback source',
 );
+assert(
+  missingSourceRedirect.status === 'redirect' && missingSourceRedirect.sourceName === 'fallback',
+  'missing source redirect includes source name for toast',
+);
+assert(
+  missingSourceRedirect.status === 'redirect' && missingSourceRedirect.reason === 'missing-source',
+  'missing source redirect reports missing-source reason',
+);
 
 let pageAttempts = 0;
 const fallbackPhases: ReaderSessionPhase[] = [];
@@ -157,6 +165,14 @@ assert(pageFallback.status === 'redirect', 'page failure can redirect to fallbac
 assert(
   pageFallback.status === 'redirect' && pageFallback.route.includes('/reader/1/healthy/'),
   'page fallback redirect uses healthy source',
+);
+assert(
+  pageFallback.status === 'redirect' && pageFallback.sourceName === 'healthy',
+  'page fallback redirect includes source name for toast',
+);
+assert(
+  pageFallback.status === 'redirect' && pageFallback.reason === 'fallback',
+  'page fallback redirect reports fallback reason',
 );
 assert(fallbackPhases.includes('retrying'), 'page failure reports retrying phase');
 assert(fallbackPhases.includes('fallback'), 'page failure reports fallback phase');

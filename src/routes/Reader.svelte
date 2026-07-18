@@ -4,12 +4,13 @@
   import { titleName } from '../lib/catalog/types';
   import { deriveDirection, saveReaderState, type ReaderDirection } from '../lib/reader/state';
   import { saveReaderSettings, type ImageFit } from '../lib/reader/settings';
-  import { loadChapterImages, revokeBlobUrls, retryFailedPages, categorizeFailure } from '../lib/reader/chapterLoader';
+  import { loadChapterImages, revokeBlobUrls, retryFailedPages, categorizeFailure, warmChapterPages } from '../lib/reader/chapterLoader';
   import { match, go, route } from '../lib/router';
   import { clamp } from '../lib/util';
   import Toast from '../lib/components/Toast.svelte';
   import ReaderChrome from '../lib/components/reader/ReaderChrome.svelte';
   import ReaderLoadingState from '../lib/components/reader/ReaderLoadingState.svelte';
+  import ReaderPageLoadHud from '../lib/components/reader/ReaderPageLoadHud.svelte';
   import ReaderErrorState from '../lib/components/reader/ReaderErrorState.svelte';
   import ReaderWarningBox from '../lib/components/reader/ReaderWarningBox.svelte';
   import ReaderResumeNotice from '../lib/components/reader/ReaderResumeNotice.svelte';
@@ -23,9 +24,11 @@
   import { recordReaderPage } from '../lib/tracker/local';
   import type { ScrapedChapter } from '../lib/scraper/engine';
   import { findFallbackChapter } from '../lib/media/fallback';
+  import { media as loadCatalogTitle } from '../lib/catalog/anilist';
   import { resolveReaderChapterSession } from '../lib/reader/chapterSession';
   import { preferredGroupForChapter, selectAdjacentChapter, sameNumberChapters } from '../lib/reader/chapterNavigation';
   import { pairPages, pageToSpreadIndex, type SpreadMode } from '../lib/reader/spread';
+  import { fallbackSwitchMessage, isFailedPage, pagesStillLoading } from '../lib/reader/pageLoadUi';
 
   type JumpBehavior = 'smooth' | 'auto';
 
@@ -120,6 +123,8 @@
   );
   let canSpreadPrev = $derived(currentSpread > 0);
   let canSpreadNext = $derived(currentSpread >= 0 && currentSpread < spreadPairs.length - 1);
+  let showPageLoadHud = $derived(!loading && !err && pagesStillLoading(totalPages, loadCount, failedPages));
+  let currentPageFailed = $derived(isFailedPage(page, failedPages));
 
   $effect(() => {
     const p = params;
@@ -263,7 +268,7 @@
     }
   }
 
-  // Preload next chapter images
+  // Preload next chapter images through the real scrape/fetch path
   let preloadAbort: AbortController | null = null;
   async function preloadNextChapter() {
     const next = nextChapter;
@@ -273,12 +278,7 @@
     try {
       const urls = await getPages(source, next.url);
       if (preloadAbort.signal.aborted) return;
-      // Fetch first 3 pages to warm the CDN cache
-      const preloadCount = Math.min(3, urls.length);
-      for (let i = 0; i < preloadCount; i++) {
-        if (preloadAbort.signal.aborted) return;
-        fetch(urls[i], { mode: 'no-cors' }).catch(() => {});
-      }
+      await warmChapterPages(urls, next.url, 3, preloadAbort.signal);
     } catch {
       // preload failure is non-critical
     }
@@ -336,6 +336,9 @@
       });
       if (signal.aborted) return;
       if (session.status === 'redirect') {
+        if (session.sourceName) {
+          toast = { text: fallbackSwitchMessage(session.sourceName), tone: 'ok' };
+        }
         go(session.route);
         return;
       }
@@ -553,6 +556,7 @@
       }
       pageBlobs = nextBlobs;
       failedPages = result.failedPages;
+      loadCount = nextBlobs.filter(Boolean).length;
       if (result.failedPages.length === 0) {
         note = '';
         failureCategory = '';
@@ -566,12 +570,12 @@
     }
   }
 
-  async function tryFallbackForSource(currentSourceId: string, currentChapterUrl: string) {
-    if (!t || fallbackAttempted) return null;
+  async function tryFallbackForSource(title: Title, currentSourceId: string, currentChapterUrl: string) {
+    if (fallbackAttempted) return null;
     fallbackAttempted = true;
     loadPhase = 'fallback';
     try {
-      return await findFallbackChapter(t, currentSourceId, currentChapterUrl);
+      return await findFallbackChapter(title, currentSourceId, currentChapterUrl);
     } finally {
       loadPhase = '';
     }
@@ -587,13 +591,37 @@
   }
 
   async function tryFallback() {
-    if (!t || !source) return;
-    const fallback = await tryFallbackForSource(source.id, chapterUrl);
-    if (fallback) {
-      go(`/reader/${mediaId}/${fallback.source.id}/${encodeURIComponent(fallback.seriesUrl)}/${encodeURIComponent(fallback.chapter.url)}`);
-    } else {
+    if (!mediaId || !sourceId || !chapterUrl || loading) return;
+    err = '';
+    failureCategory = '';
+    loading = true;
+    loadPhase = 'fallback';
+    try {
+      let title = t;
+      if (!title) {
+        title = await loadCatalogTitle(mediaId);
+        if (title) t = title;
+      }
+      if (!title) {
+        err = 'Could not load title metadata to search other reading sites.';
+        loading = false;
+        loadPhase = '';
+        return;
+      }
+      const fallback = await tryFallbackForSource(title, sourceId, chapterUrl);
+      if (fallback) {
+        toast = { text: fallbackSwitchMessage(fallback.source.name), tone: 'ok' };
+        go(`/reader/${mediaId}/${fallback.source.id}/${encodeURIComponent(fallback.seriesUrl)}/${encodeURIComponent(fallback.chapter.url)}`);
+        return;
+      }
       err = 'No other enabled source could load this chapter.';
       failureCategory = '';
+      loading = false;
+      loadPhase = '';
+    } catch (e) {
+      err = categorizeFailure(e);
+      loading = false;
+      loadPhase = '';
     }
   }
 
@@ -699,6 +727,10 @@
     />
   {/if}
 
+  {#if showPageLoadHud}
+    <ReaderPageLoadHud {pageLoadPercent} {pageLoadLabel} />
+  {/if}
+
   {#if err}
     <ReaderErrorState
       {err}
@@ -734,11 +766,14 @@
           {spreadPairs}
           {currentSpread}
           {pageBlobs}
+          {failedPages}
+          {retrying}
           {canSpreadPrev}
           {canSpreadNext}
           onSpreadPrev={() => { const s = currentSpread - 1; if (s >= 0) { const p = spreadPairs[s]; page = p.right >= 0 ? p.right : p.left; } }}
           onSpreadNext={() => { const s = currentSpread + 1; if (s < spreadPairs.length) { const p = spreadPairs[s]; page = p.right >= 0 ? p.right : p.left; } }}
           onPageClick={onPageClick}
+          onRetryFailed={retryFailed}
         />
       {:else}
         <ReaderPagedView
@@ -748,8 +783,11 @@
           {imageFit}
           {canPrev}
           {canNext}
+          pageFailed={currentPageFailed}
+          {retrying}
           onStep={step}
           {onPageClick}
+          onRetryFailed={retryFailed}
         />
       {/if}
     {:else}
@@ -757,7 +795,10 @@
         {pageUrls}
         {pageBlobs}
         {imageFit}
+        {failedPages}
+        {retrying}
         {pageAnchor}
+        onRetryFailed={retryFailed}
       />
 
       {#if direction === 'vertical' && (prevChapter || nextChapter)}

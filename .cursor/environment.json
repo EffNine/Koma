@@ -1,0 +1,17 @@
+{
+  "name": "Koma Cloud",
+  "install": "pnpm install",
+  "ports": [
+    {
+      "name": "vite dev server",
+      "port": 5174
+    }
+  ],
+  "terminals": [
+    {
+      "name": "dev",
+      "command": "pnpm dev",
+      "description": "Vite dev server for the Koma PWA on http://localhost:5174"
+    }
+  ]
+}

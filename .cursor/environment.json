@@ -1,5 +1,4 @@
 {
-  "$schema": "https://www.cursor.com/schemas/environment.schema.json",
   "name": "Koma Cloud",
   "install": "pnpm install",
   "ports": [

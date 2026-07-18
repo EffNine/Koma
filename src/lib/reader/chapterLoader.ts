@@ -156,6 +156,31 @@ export function categorizeFailure(e: unknown): string {
   return msg;
 }
 
+/**
+ * Warm the first few pages of a chapter through the real fetch path
+ * (proxy / fetch_raw with referer), so next-chapter transitions are less cold.
+ * Failures are ignored — preload is best-effort.
+ */
+export async function warmChapterPages(
+  urls: string[],
+  referer: string,
+  count = 3,
+  signal?: AbortSignal,
+): Promise<number> {
+  const n = Math.min(Math.max(0, count), urls.length);
+  let warmed = 0;
+  for (let i = 0; i < n; i++) {
+    if (signal?.aborted) return warmed;
+    try {
+      await fetchBytes(urls[i], { referer });
+      warmed++;
+    } catch {
+      // preload failure is non-critical
+    }
+  }
+  return warmed;
+}
+
 function revoke(urls: string[]): string[] {
   revokeBlobUrls(urls);
   return Array(urls.length).fill('');

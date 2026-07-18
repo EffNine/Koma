@@ -86,6 +86,9 @@ export type ReaderChapterSessionResult =
   | {
       status: 'redirect';
       route: string;
+      /** Human-readable source name for toast copy when auto-switching. */
+      sourceName?: string;
+      reason?: 'fallback' | 'missing-source';
     };
 
 export async function resolveReaderChapterSession(
@@ -130,6 +133,8 @@ export async function resolveReaderChapterSession(
       return {
         status: 'redirect',
         route: readerRoute(input.mediaId, fallback.source.id, fallback.seriesUrl, fallback.chapter.url),
+        sourceName: fallback.source.name,
+        reason: 'fallback',
       };
     }
     throw e;
@@ -178,6 +183,8 @@ async function resolveMissingSourceRedirect(
       return {
         status: 'redirect',
         route: readerRoute(input.mediaId, source.id, result.seriesUrl, match.url),
+        sourceName: source.name,
+        reason: 'missing-source',
       };
     }
   }

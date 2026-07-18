@@ -1,5 +1,5 @@
 {
-  "name": "Koma Cloud",
+  "name": "KomaCloud",
   "install": "pnpm install",
   "ports": [
     {

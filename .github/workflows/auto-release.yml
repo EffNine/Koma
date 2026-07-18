@@ -9,7 +9,9 @@ concurrency:
 
 jobs:
   release:
-    if: github.actor != 'github-actions[bot]'
+    if: |
+      github.actor != 'github-actions[bot]' &&
+      !startsWith(github.event.head_commit.message, 'chore: bump version')
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -34,47 +36,49 @@ jobs:
       - name: Determine next version
         id: bump
         run: |
-          CURRENT=$(node -p "require('./package.json').version")
-          echo "current=$CURRENT" >> $GITHUB_OUTPUT
+          set -euo pipefail
 
-          # Check if there are any tags
-          HAS_TAGS=false
-          if git describe --tags --abbrev=0 2>/dev/null; then
-            HAS_TAGS=true
-            LAST_TAG=$(git describe --tags --abbrev=0)
-          else
-            LAST_TAG=""
-          fi
-          echo "last_tag=$LAST_TAG" >> $GITHUB_OUTPUT
+          PKG_VERSION=$(node -p "require('./package.json').version")
+          echo "package_version=$PKG_VERSION"
 
-          # If no tags or current version already tagged, skip
-          if [ "$HAS_TAGS" = "true" ] && [ "$LAST_TAG" = "v$CURRENT" ]; then
-            echo "No new commits since last release"
-            echo "released=false" >> $GITHUB_OUTPUT
+          # Latest semver tag across all refs (not just ancestors of HEAD)
+          LAST_TAG=$(git tag -l 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -1 || true)
+          echo "last_tag=$LAST_TAG" >> "$GITHUB_OUTPUT"
+
+          if [ -z "$LAST_TAG" ]; then
+            echo "No tags yet; releasing package.json version $PKG_VERSION"
+            echo "version=$PKG_VERSION" >> "$GITHUB_OUTPUT"
+            echo "released=true" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # If no tags exist yet, release current version
-          if [ "$HAS_TAGS" = "false" ]; then
-            echo "version=$CURRENT" >> $GITHUB_OUTPUT
-            echo "released=true" >> $GITHUB_OUTPUT
+          LAST_VERSION="${LAST_TAG#v}"
+
+          # Skip when HEAD has nothing new since the latest tag
+          if [ -z "$(git rev-list -n 1 "${LAST_TAG}..HEAD" 2>/dev/null || true)" ]; then
+            echo "No new commits since $LAST_TAG"
+            echo "released=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          # Determine bump type from conventional commits
-          COMMITS=$(git log "$LAST_TAG..HEAD" --pretty=format:"%s" 2>/dev/null || echo "")
+          # Base bump on max(package.json, last tag) so orphaned tags don't regress
+          BASE="$PKG_VERSION"
+          if [ "$(printf '%s\n%s\n' "$PKG_VERSION" "$LAST_VERSION" | sort -V | tail -1)" = "$LAST_VERSION" ]; then
+            BASE="$LAST_VERSION"
+          fi
+          echo "base_version=$BASE"
 
+          COMMITS=$(git log "$LAST_TAG..HEAD" --pretty=format:"%s" || true)
           if [ -z "$COMMITS" ]; then
-            echo "No new commits since last release"
-            echo "released=false" >> $GITHUB_OUTPUT
+            echo "No new commits since $LAST_TAG"
+            echo "released=false" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          MAJOR=$(echo "$COMMITS" | grep -c "^.*!:.*\|^[a-z]*(.*)!:.*" || true)
-          MINOR=$(echo "$COMMITS" | grep -c "^feat\|^feature" || true)
-          PATCH=$(echo "$COMMITS" | grep -c "^fix\|^bugfix" || true)
+          MAJOR=$(echo "$COMMITS" | grep -cE '^[a-z]+(\(.+\))?!:|^.*BREAKING CHANGE' || true)
+          MINOR=$(echo "$COMMITS" | grep -cE '^(feat|feature)(\(.+\))?:' || true)
 
-          IFS='.' read -r MAJOR_V MINOR_V PATCH_V <<< "$CURRENT"
+          IFS='.' read -r MAJOR_V MINOR_V PATCH_V <<< "$BASE"
 
           if [ "$MAJOR" -gt 0 ]; then
             MAJOR_V=$((MAJOR_V + 1))
@@ -88,25 +92,29 @@ jobs:
           fi
 
           NEXT="${MAJOR_V}.${MINOR_V}.${PATCH_V}"
-          echo "version=$NEXT" >> $GITHUB_OUTPUT
-          echo "released=true" >> $GITHUB_OUTPUT
+
+          if git rev-parse "v$NEXT" >/dev/null 2>&1; then
+            echo "Tag v$NEXT already exists; refusing to re-release"
+            exit 1
+          fi
+
+          echo "version=$NEXT" >> "$GITHUB_OUTPUT"
+          echo "released=true" >> "$GITHUB_OUTPUT"
+          echo "Next version: $NEXT"
 
       - name: Bump version in files
         if: steps.bump.outputs.released == 'true'
         run: |
           VERSION="${{ steps.bump.outputs.version }}"
 
-          # Update package.json
           node -e "
             const pkg = require('./package.json');
             pkg.version = '$VERSION';
             require('fs').writeFileSync('./package.json', JSON.stringify(pkg, null, 2) + '\n');
           "
 
-          # Update Cargo.toml
-          sed -i "s/^version = \".*\"/version = \"$VERSION\"/" src-tauri/Cargo.toml
+          sed -i "0,/^version = \".*\"/s//version = \"$VERSION\"/" src-tauri/Cargo.toml
 
-          # Update tauri.conf.json
           node -e "
             const conf = require('./src-tauri/tauri.conf.json');
             conf.version = '$VERSION';
@@ -127,6 +135,8 @@ jobs:
           git commit -m "chore: bump version to $VERSION"
 
           git tag "v$VERSION"
+          # Push the bump commit onto main so package.json stays in sync, then the tag.
+          git push origin "HEAD:${{ github.ref_name }}"
           git push origin "v$VERSION"
 
       - name: Generate release notes
@@ -144,13 +154,15 @@ jobs:
             FULL_LOG="**Full Changelog**: https://github.com/${{ github.repository }}/compare/$LAST_TAG...v$VERSION"
           fi
 
-          echo "notes<<EOF" >> $GITHUB_OUTPUT
-          echo "## What's Changed" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "$NOTES" >> $GITHUB_OUTPUT
-          echo "" >> $GITHUB_OUTPUT
-          echo "$FULL_LOG" >> $GITHUB_OUTPUT
-          echo "EOF" >> $GITHUB_OUTPUT
+          {
+            echo "notes<<EOF"
+            echo "## What's Changed"
+            echo ""
+            echo "$NOTES"
+            echo ""
+            echo "$FULL_LOG"
+            echo "EOF"
+          } >> "$GITHUB_OUTPUT"
 
       - name: Create Release
         if: steps.bump.outputs.released == 'true'

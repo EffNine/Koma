@@ -44,12 +44,23 @@
     if (state.q && !q) q = state.q;
   }
 
+  let didInit = $state(false);
+
   $effect(() => {
     const routeState = paramsFromRoute;
-    if (!hasSearchRouteState(routeState)) return;
     untrack(() => {
-      applyRouteState(routeState);
-      void run();
+      if (hasSearchRouteState(routeState)) {
+        applyRouteState(routeState);
+        void run();
+        didInit = true;
+        return;
+      }
+      // Default Search landing: Trending tab is selected, so load browse results
+      // instead of leaving an empty "search to get started" state.
+      if (!didInit) {
+        didInit = true;
+        void run();
+      }
     });
   });
 

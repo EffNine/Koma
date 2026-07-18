@@ -1,6 +1,7 @@
 <script lang="ts">
   import { untrack } from 'svelte';
-  import { fetchBytes } from '../net';
+  import { fetchRaw } from '../net';
+  import { detectImageMime } from '../util/imageBytes';
 
   let { src, alt = '', referer = '', class: className = '', loading: imgLoading = 'lazy' as 'lazy' | 'eager' }: {
     src: string;
@@ -14,20 +15,11 @@
   let failed = $state(false);
   let loadedSrc = '';
 
-  function guessType(url: string, bytes: Uint8Array): string {
-    // ComicK sometimes serves WebP bytes with a .jpg extension, so trust magic bytes over extension.
-    if (bytes.length > 3) {
-      if (bytes[0] === 0x89 && bytes[1] === 0x50 && bytes[2] === 0x4e) return 'image/png';
-      if (bytes[0] === 0xff && bytes[1] === 0xd8) return 'image/jpeg';
-      if (bytes[0] === 0x47 && bytes[1] === 0x49 && bytes[2] === 0x46) return 'image/gif';
-      if (bytes[0] === 0x52 && bytes[1] === 0x49 && bytes[2] === 0x46 && bytes[3] === 0x46) return 'image/webp';
-    }
-    const ext = url.split('.').pop()?.toLowerCase();
-    if (ext === 'png') return 'image/png';
-    if (ext === 'gif') return 'image/gif';
-    if (ext === 'webp') return 'image/webp';
-    if (ext === 'jpg' || ext === 'jpeg') return 'image/jpeg';
-    return 'image/jpeg';
+  function markFailed() {
+    untrack(() => {
+      failed = true;
+      blobUrl = '';
+    });
   }
 
   $effect(() => {
@@ -46,19 +38,40 @@
     const defaultReferer = url.includes('comick') ? 'https://comickz.co.uk' : new URL(url).origin + '/';
 
     untrack(() => {
-      fetchBytes(url, { referer: referer || defaultReferer })
-        .then((bytes) => {
-          const type = guessType(url, bytes);
-          const blob = new Blob([bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart], { type });
+      fetchRaw(url, { referer: referer || defaultReferer })
+        .then((resp) => {
+          if (!resp.status || resp.status >= 400 || !resp.body_b64) {
+            markFailed();
+            return;
+          }
+          const bin = atob(resp.body_b64);
+          const bytes = new Uint8Array(bin.length);
+          for (let i = 0; i < bin.length; i++) bytes[i] = bin.charCodeAt(i);
+          const type = detectImageMime(bytes);
+          if (!type) {
+            markFailed();
+            return;
+          }
+          const blob = new Blob(
+            [bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength) as BlobPart],
+            { type },
+          );
           untrack(() => { blobUrl = URL.createObjectURL(blob); });
         })
-        .catch(() => { untrack(() => { failed = true; }); });
+        .catch(() => { markFailed(); });
     });
   });
 </script>
 
 {#if blobUrl}
-  <img src={blobUrl} alt={alt} class={className} loading={imgLoading} style="width:100%;aspect-ratio:3/4;display:block;object-fit:cover" />
+  <img
+    src={blobUrl}
+    alt={alt}
+    class={className}
+    loading={imgLoading}
+    style="width:100%;aspect-ratio:3/4;display:block;object-fit:cover"
+    onerror={markFailed}
+  />
 {:else if failed}
   <div class="proxied-fallback {className}">{alt?.[0]?.toUpperCase() ?? '?'}</div>
 {:else}

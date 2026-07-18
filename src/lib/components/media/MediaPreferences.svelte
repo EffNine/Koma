@@ -60,8 +60,6 @@
     {#if chapterSource.name === 'MangaDex'}
       <span class="attribution">— Chapters provided by <a href="https://mangadex.org" target="_blank" rel="noopener">MangaDex</a> and scanlation groups.</span>
     {/if}
-  {:else if sources.length === 0}
-    Add a reading site in Settings to start reading.
   {:else if chapterErr}
     {chapterErr}
   {/if}

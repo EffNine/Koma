@@ -8,3 +8,4 @@ src-tauri/gen
 .playwright-mcp/
 e2e-session/test-results/
 docs/verified-source-urls.md
+output/

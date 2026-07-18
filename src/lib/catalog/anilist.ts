@@ -179,6 +179,7 @@ export async function browseFiltered(filters: BrowseFilters): Promise<Title[]> {
       .map((k) => {
         const v = vars[k];
         if (k === 'country') return `$${k}: CountryCode`;
+        if (k === 'status') return `$${k}: MediaStatus`;
         if (Array.isArray(v)) return `$${k}: [String]`;
         if (k === 'yearFrom' || k === 'yearTo') return `$${k}: FuzzyDateInt`;
         if (typeof v === 'number') return `$${k}: Int`;

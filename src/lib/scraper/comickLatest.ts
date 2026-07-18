@@ -68,6 +68,14 @@ function extractHomeData(html: string): CKHomeData['data'] | null {
   }
 }
 
+/** ComicK sometimes ships a shared placeholder hash that always 404s. */
+const PLACEHOLDER_COVER_RE = /\/covers\/40bb6193\./i;
+
+export function isPlaceholderCover(url: string | undefined | null): boolean {
+  if (!url) return true;
+  return PLACEHOLDER_COVER_RE.test(url);
+}
+
 function mapItem(item: {
   slug: string;
   title: string;
@@ -76,7 +84,7 @@ function mapItem(item: {
   md_covers?: Array<{ b2key: string; width?: number; height?: number }>;
 }): ComickLatestItem {
   let cover = '';
-  if (item.full_image_path) {
+  if (item.full_image_path && !isPlaceholderCover(item.full_image_path)) {
     cover = item.full_image_path;
   } else if (item.md_covers?.length) {
     // meo.comick.pictures covers are frequently 404 now; prefer a full_image_path
@@ -92,13 +100,22 @@ function mapItem(item: {
   };
 }
 
+function withUsableCovers(items: ComickLatestItem[]): ComickLatestItem[] {
+  return items.filter((item) => item.cover && !isPlaceholderCover(item.cover));
+}
+
 /** Fetch the latest recently added comics from ComicK home page. */
 export async function fetchLatestUpdates(): Promise<ComickLatestItem[]> {
   try {
     const html = await fetchText(CK_HOME, { headers: CK_HEADERS });
     const data = extractHomeData(html);
     if (!data?.recent_add) return [];
-    return data.recent_add.map(mapItem);
+    // recent_add currently ships placeholder covers for every item; drop them so
+    // Home can fall back to AniList covers instead of a strip of broken images.
+    const mapped = data.recent_add.map(mapItem);
+    const usable = withUsableCovers(mapped);
+    if (usable.length > 0) return usable;
+    return await resolveCovers(mapped).then(withUsableCovers);
   } catch {
     return [];
   }
@@ -110,7 +127,7 @@ export async function fetchPopularOngoing(): Promise<ComickLatestItem[]> {
     const html = await fetchText(CK_HOME, { headers: CK_HEADERS });
     const data = extractHomeData(html);
     if (!data?.popular_ongoing) return [];
-    return data.popular_ongoing.map(mapItem);
+    return withUsableCovers(data.popular_ongoing.map(mapItem));
   } catch {
     return [];
   }
@@ -122,7 +139,10 @@ export async function fetchCompleted(): Promise<ComickLatestItem[]> {
     const html = await fetchText(CK_HOME, { headers: CK_HEADERS });
     const data = extractHomeData(html);
     if (!data?.completed) return [];
-    return data.completed.map(mapItem);
+    const mapped = data.completed.map(mapItem);
+    const usable = withUsableCovers(mapped);
+    if (usable.length > 0) return usable;
+    return await resolveCovers(mapped).then(withUsableCovers);
   } catch {
     return [];
   }
@@ -140,7 +160,7 @@ export async function fetchCoverForSlug(slug: string): Promise<string | null> {
   try {
     const html = await fetchText(`https://comickz.co.uk/comic/${slug}`, { headers: CK_HEADERS });
     const m = html.match(/<meta[^>]*property="og:image"[^>]*content="([^"]+)"/);
-    if (!m) return null;
+    if (!m || isPlaceholderCover(m[1])) return null;
     return m[1];
   } catch {
     return null;
@@ -178,8 +198,14 @@ export async function fetchTopFollowNew(days: '7' | '30' | '90' = '7'): Promise<
 async function resolveCovers(items: ComickLatestItem[]): Promise<ComickLatestItem[]> {
   const resolved = await Promise.all(
     items.map(async (item) => {
+      // Keep a working cover; only replace missing/placeholder/meo fallbacks.
+      if (item.cover && !isPlaceholderCover(item.cover) && !item.cover.includes('meo.comick.pictures')) {
+        return item;
+      }
       const cover = await fetchCoverForSlug(item.slug);
-      return cover ? { ...item, cover } : item;
+      if (cover) return { ...item, cover };
+      if (isPlaceholderCover(item.cover)) return { ...item, cover: '' };
+      return item;
     })
   );
   return resolved;

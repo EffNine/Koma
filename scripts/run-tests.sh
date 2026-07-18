@@ -45,6 +45,8 @@ TESTS=(
   pwa.test.ts
   comick-driver.test.ts
   driver-registry.test.ts
+  image-bytes.test.ts
+  comick-latest.test.ts
 )
 
 failures=0

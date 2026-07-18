@@ -214,7 +214,7 @@
           <h2 class="h2">Because you read {suggestion.seedTitle}</h2>
           <p class="section-sub">Trending {suggestion.genre} titles from AniList</p>
         </div>
-        <button class="btn small-btn" onclick={() => go(`/search?genres=${encodeURIComponent(suggestion.genre.toLowerCase())}`)}>View genre</button>
+        <button class="btn small-btn" onclick={() => go(`/search?genres=${encodeURIComponent(suggestion.genre)}`)}>View genre</button>
       </div>
       <div class="grid">
         {#each suggestion.titles as title (title.id)}
@@ -224,34 +224,6 @@
     </section>
   {/each}
 {/if}
-
-<!-- Quick entry points -->
-<section class="section quick-links">
-  <button class="quick-link" onclick={() => go('/search')}>
-    <span class="ql-icon">🔍</span>
-    <span class="ql-label">Search</span>
-  </button>
-  <button class="quick-link" onclick={() => go('/library')}>
-    <span class="ql-icon">📚</span>
-    <span class="ql-label">Library</span>
-  </button>
-  <button class="quick-link" onclick={() => go('/categories')}>
-    <span class="ql-icon">🏷️</span>
-    <span class="ql-label">Categories</span>
-  </button>
-  <button class="quick-link" onclick={() => go('/genres')}>
-    <span class="ql-icon">🎭</span>
-    <span class="ql-label">Genres</span>
-  </button>
-  <button class="quick-link" onclick={() => go('/activity')}>
-    <span class="ql-icon">📋</span>
-    <span class="ql-label">Activity</span>
-  </button>
-  <button class="quick-link" onclick={() => go('/settings')}>
-    <span class="ql-icon">⚙️</span>
-    <span class="ql-label">Settings</span>
-  </button>
-</section>
 
 <HomeFollowedUpdates
   {followedUpdates}
@@ -316,13 +288,4 @@
   .tcard-footer { padding: 6px 10px 10px; }
   .tcard-btn { display: inline-block; font-size: 11px; font-weight: 650; color: var(--accent); padding: 3px 10px; border-radius: var(--radius-sm); border: 1px solid color-mix(in srgb, var(--accent) 40%, transparent); cursor: pointer; transition: background .15s; }
   .nocover { aspect-ratio: 3/4; display: flex; align-items: center; justify-content: center; padding: 10px; color: var(--muted); font-size: 13px; text-align: center; background: var(--elevated); }
-  .quick-links { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: var(--gap-lg); }
-  .quick-link {
-    display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 14px;
-    border-radius: var(--radius-sm); border: 1px solid var(--border-soft); background: var(--surface);
-    color: var(--text); font-size: 13px; cursor: pointer; transition: all .15s;
-  }
-  .quick-link:hover { border-color: var(--accent); background: color-mix(in srgb, var(--accent) 8%, var(--surface)); }
-  .ql-icon { font-size: 14px; }
-  .ql-label { font-weight: 600; }
 </style>

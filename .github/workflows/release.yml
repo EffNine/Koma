@@ -20,10 +20,11 @@ jobs:
         include:
           - os: ubuntu-22.04
             target: x86_64-unknown-linux-gnu
-          - os: macos-13
-            target: x86_64-apple-darwin
+          # Build both Mac targets on macos-14; macos-13 runners are scarce/queued.
           - os: macos-14
             target: aarch64-apple-darwin
+          - os: macos-14
+            target: x86_64-apple-darwin
           - os: windows-latest
             target: x86_64-pc-windows-msvc
     runs-on: ${{ matrix.os }}
@@ -33,7 +34,7 @@ jobs:
           ref: ${{ github.event.inputs.tag || github.ref }}
 
       - name: Install Linux dependencies
-        if: matrix.os == 'ubuntu-22.04'
+        if: startsWith(matrix.os, 'ubuntu-')
         run: |
           sudo apt-get update
           sudo apt-get install -y \

@@ -2,6 +2,7 @@
   import { search } from '../catalog/anilist';
   import { titleName, type Title } from '../catalog/types';
   import { go } from '../router';
+  import { highlightText } from '../textHighlight';
   import ProxiedImg from './ProxiedImg.svelte';
 
   let {
@@ -118,28 +119,9 @@
     onClose();
   }
 
-  // Highlight matching text in a string.
-  // Title text comes from a remote catalog and the query is user input —
-  // both are HTML-escaped here because the result is rendered via {@html}.
-  function escapeHtml(s: string): string {
-    return s
-      .replaceAll('&', '&amp;')
-      .replaceAll('<', '&lt;')
-      .replaceAll('>', '&gt;')
-      .replaceAll('"', '&quot;')
-      .replaceAll("'", '&#39;');
-  }
-
-  function highlightText(text: string, q: string) {
-    if (!q.trim()) return escapeHtml(text);
-    const escaped = q.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-    const parts = text.split(new RegExp(`(${escaped})`, 'gi'));
-    return parts.map((part, i) =>
-      part.toLowerCase() === q.toLowerCase()
-        ? `<mark>${escapeHtml(part)}</mark>`
-        : escapeHtml(part),
-    ).join('');
-  }
+  // Highlight escaping lives in src/lib/textHighlight.ts (imported above):
+  // it is pure, unit-tested code — the invisible pairing of {@html} with
+  // escape-before-render is the invariant that must never regress.
 
   // Country badge label
   function countryLabel(country?: string | null): string {

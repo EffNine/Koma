@@ -14,6 +14,20 @@ use url::Url;
 /// Global cookie store keyed by hostname.
 pub struct CookieStore(pub Mutex<HashMap<String, String>>);
 
+// P4 hardening: cookie-store keys later flow into a raw `Cookie` header
+// (fetch.rs) and are merged with "; ". Keys must stay plain ASCII host
+// tokens — no control characters, separators or quotes.
+fn validate_cookie_store_host(host: &str) -> Result<(), String> {
+    let bad = host.is_empty()
+        || host.len() > 255
+        || host.chars().any(|c| !c.is_ascii() || c.is_control())
+        || host.contains([' ', '\'', '"', '\\', ';', ',']);
+    if bad {
+        return Err("invalid host".to_string());
+    }
+    Ok(())
+}
+
 #[derive(Serialize, Deserialize, Clone)]
 pub struct CfUnlockProgress {
     pub host: String,
@@ -34,8 +48,22 @@ pub async fn unlock_cloudflare(
     url: String,
 ) -> Result<CfUnlockResult, String> {
     let parsed = Url::parse(&url).map_err(|e| format!("Invalid URL: {}", e))?;
+    // P4 hardening: the challenge window is a full native webview pointed at
+    // this URL — only allow http(s); refuse file:// and custom schemes that
+    // would open local content or OS handlers.
+    if parsed.scheme() != "http" && parsed.scheme() != "https" {
+        return Err(format!("Unsupported scheme: {}", parsed.scheme()));
+    }
     let host = parsed.host_str().unwrap_or("unknown").to_string();
     let label = format!("cf-unlock-{}", host.replace('.', "-"));
+
+    // P4 hardening: `host` was previously interpolated into the inline JS
+    // below as a bare single-quoted string. WHATWG opaque hosts may contain a
+    // literal `'`, which closes the string early and turns the remaining
+    // tail into attacker-controlled JavaScript run via webview.eval() inside
+    // the challenge window. JSON-encode the host so whatever bytes it
+    // contains stay a plain string literal.
+    let host_json = serde_json::to_string(&host).unwrap_or_else(|_| "\"unknown\"".to_string());
 
     // Emit progress
     let _ = app.emit("cf-unlock-progress", CfUnlockProgress {
@@ -77,14 +105,13 @@ pub async fn unlock_cloudflare(
                     var hasRealContent = title.length > 0 && !title.includes('Just a moment') && !hasChallenge;
                     if (hasRealContent) {{
                         window.__TAURI_INTERNALS__.invoke('cf_challenge_passed', {{
-                            host: '{}'
+                            host: {host_json}
                         }});
                         document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#1a1a2e;color:#4ade80;"><div style="text-align:center;"><h1>✅ Unlocked!</h1><p style="color:#94a3b8;">Cloudflare bypass successful. You can close this window.</p></div></div>';
                     }}
                 }} catch(e) {{}}
             }})();
-            "#,
-            host
+            "#
         );
         let _ = webview.eval(&check_js);
 
@@ -128,14 +155,13 @@ pub async fn unlock_cloudflare(
                         var hasRealContent = title.length > 0 && !title.includes('Just a moment') && !hasChallenge;
                         if (hasRealContent) {{
                             window.__TAURI_INTERNALS__.invoke('cf_challenge_passed', {{
-                                host: '{}'
+                                host: {host_json}
                             }});
                             document.body.innerHTML = '<div style="display:flex;align-items:center;justify-content:center;height:100vh;font-family:sans-serif;background:#1a1a2e;color:#4ade80;"><div style="text-align:center;"><h1>✅ Unlocked!</h1><p style="color:#94a3b8;">Cloudflare bypass successful. You can close this window.</p></div></div>';
                         }}
                     }} catch(e) {{}}
                 }})();
-                "#,
-                host
+                "#
             );
             let _ = webview.eval(&check_js);
 
@@ -244,6 +270,7 @@ pub async fn cf_challenge_passed(
     app: AppHandle,
     host: String,
 ) -> Result<(), String> {
+    validate_cookie_store_host(&host)?;
     // Signal that the Cloudflare challenge has passed.
     // We store a marker so the polling loop knows to proceed.
     let store = app.state::<CookieStore>();
@@ -257,6 +284,7 @@ pub async fn store_cf_cookies(
     host: String,
     cookies: String,
 ) -> Result<(), String> {
+    validate_cookie_store_host(&host)?;
     let store = app.state::<CookieStore>();
     let mut map = store.0.lock().unwrap();
     let existing = map.get(&host).cloned().unwrap_or_default();
@@ -283,6 +311,36 @@ pub async fn get_cf_cookies(
         return Ok(String::new());
     }
     Ok(cookies)
+}
+
+#[cfg(test)]
+mod cookie_store_host_tests {
+    use super::validate_cookie_store_host;
+
+    #[test]
+    fn plain_ascii_hosts_are_accepted() {
+        assert!(validate_cookie_store_host("api.comick.io").is_ok());
+        assert!(validate_cookie_store_host("graphql.anilist.co").is_ok());
+        assert!(validate_cookie_store_host("xn--bcher-kva.example").is_ok());
+    }
+
+    #[test]
+    fn separators_quotes_and_control_chars_are_refused() {
+        // Other systems join keys into a raw `Cookie` header ("; " merge).
+        for bad in [
+            "",
+            "api.comick.io; Path=/",
+            "has space",
+            "has'quote",
+            "has\"quote",
+            "has\\backslash",
+            "has,comma",
+            "nul\u{0}byte",
+            "unicode\u{00e9}accent",
+        ] {
+            assert!(validate_cookie_store_host(bad).is_err(), "must refuse {:?} ({:?})", bad, bad.to_string());
+        }
+    }
 }
 
 #[tauri::command]

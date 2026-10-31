@@ -1,0 +1,16 @@
+{
+  "$comment": "MonkeyLab target manifest (operator-reviewed; Engine consumes only this file at the repo root). The buildTest command runs inside the network-none containment cage via the MonkeyLab toolchain image; node_modules are populated offline from the toolchain image's prepared dependency snapshot.",
+  "schemaVersion": "1.0.0",
+  "name": "koma",
+  "language": "node",
+  "preferredManager": "pnpm",
+  "buildTest": {
+    "command": ["npm", "run", "test:monkeylab"],
+    "timeoutHintMs": 600000
+  },
+  "install": {
+    "command": ["bash", "-lc", "if [ ! -f node_modules/.bin/tsx ]; then cp -R /opt/koma/node_modules/. ./node_modules/ && find ./node_modules -mindepth 1 -exec chmod a+rwX {} +; fi"],
+    "timeoutMs": 240000,
+    "source": "toolchain-image"
+  }
+}
